@@ -82,3 +82,10 @@ The simulation flow of MLPACT is shown in the following image:
 <!-- ![](/image/Screenshot 2025-08-05 154444.png|width=100) -->
 
 <!-- ![](/image/Screenshot 2025-08-01 092003.png|width=100) -->
+
+
+# References
+
+[1] Mohammadamin Hajikhodaverdian, Sherief Reda, and Ayse K. Coskun. Fast Chip Transient Temperature Simulation via Machine Learning. 2025 7th ACM/IEEE International Symposium on Machine Learning for CAD (MLCAD), Sept. 2025.
+[2] Mohammadamin Hajikhodaverdian, Sherief Reda, Ayse K. Coskun. Steady-State Temperature Prediction Based on Compact Thermal Models Using Machine Learning. 2025 24th IEEE Intersociety Conference on Thermal and Thermomechanical Phenomena in Electronic Systems (ITherm), May 2025.
+[3] Mohammadamin Hajikhodaverdian, Sherief Reda, Ayse K. Coskun. Fast Machine Learning Based Prediction for Temperature Simulation Using Compact Models (Extended Abstract). 2025 Design, Automation & Test in Europe Conference & Exhibition (DATE), pp. 1-2, April 2025.
