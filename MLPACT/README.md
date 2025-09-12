@@ -83,6 +83,8 @@ The simulation flow of MLPACT is shown in the following image:
 
 <!-- ![](/image/Screenshot 2025-08-01 092003.png|width=100) -->
 
+# Citation
+If you use ML-PACT for your publications, please cite our MLCAD and DATE papers [1,3]. If you are using the window-based technique, please cite our ITHERM and DATE papers [2,3].
 
 # References
 
