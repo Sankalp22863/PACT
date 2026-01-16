@@ -5,73 +5,112 @@
 
 - [Overview](#overview)
 - [Installation](#installation)
-- [Usage](#usage)
+- [Command Line](#command-line)
 - [Configuration](#configuration)
+- [Example](#example)
 - [Project Structure](#project-structure)
 
 
 # Overview
 
-This script runs transient PACT using PCA-based linear regression.
+MLPACT is a transient thermal predictor that uses PCA dimentionality reductor and a Koopman-inspired linear regression machine learning model.
 
 
 # Installation
 
-Open a new python environment in the terminal. Code must be run in python environment to install and use the necessary modules.
+Create a new python environment in the terminal (only needs to be created the first time). Code must be run in python environment to install and use the necessary modules.
 
-
-```bash
+```
 python3 -m venv <my_env>
 ```
 
-Activate the environment:
+Activate the environment every time the code is run:
 
-```bash
+```
 source my_env/bin/activate
 ```
 
 Install necessary modules as needed, based on command line error outputs:
 
-```bash
+```
 pip install pandas matplotlib numpy scipy torch scikit-learn
 ```
 
+To make sure the correct modules are loaded and the pandas version is correct:
 
-# Usage
+```
+module purge
+module load openmpi/3.1.4_gnu-10.2.0 xyce/7.4
+python -m pip install "pandas==1.5.3"
+```
 
-```bash
-python MLCAD_MLPACT_main.py --modelParams-file <modelParams_file> --power-data-csv <power_data_csv> --train-dir <train_dir> --test-dir <test_dir> --ground-truth-temp-dir <ground_truth_temp_dir> --ground-truth-avail <ground_truth_avail> --n-components-features <n_components_features> --n-components-targets <n_components_targets> --pred-model 
+
+# Command Line
+In the src directory, by using the following command, we can run MLPACT:
+```
+python3 MLPACT_v2.py --modelParamsFile ../Data/example_modelParams.config --configFile ../Data/example_config.config --floorplanFile ../Data/example_flp.csv --lcfFile ../Data/example_lcf.csv --power-data-csv ../Data/example_power_data.csv --ptrace-dir ../Data/example_ptraces/ --output-dir ../Data --n-training-samples 10 --visualize --n-components-features 50 --n-components-targets 50
 ```
 
 # Configuration
 
-User inputs are as follows: (optional)
-1. Model parameter file
-    * [PATH] defines the path to the library, ptrace, flp.
-    * [Simulation] defines the simulation type (e.g, steady-state or transient).
-    * [Solver] selects the solver (SuperLU, SPICE_steady, SPICE_transient).
-    * [Grid] is the number of grid cells used in the simulation.
-    * Users can also define the heat sink characteristics, cooling properties, and other cooling options.
+User inputs are as follows:
+1. Model parameter file (required)
+    1. [PATH] defines the path to the library, ptrace, flp.
+    2. [Simulation] defines the simulation type (e.g, steady-state or transient).
+    3. [Solver] selects the solver (SuperLU, SPICE_steady, SPICE_transient).
+    4. [Grid] is the number of grid cells used in the simulation.
+    5. Users can also define the heat sink characteristics, cooling properties, and other cooling options.
 
-2. Power data file
+2. Config file describes the layer material properties. (required)
+    1. Thickness defines the layer thickness.
+    2. HTC is the heat transfer coefficient between the ambient and the heat sink.
+    3. Thermal resistivity and specific heat capacity are used to calculate the thermal resistor and capacitor values.
+    4. [Init] defines the ambient temperature.
+    5. Users can select the heat sink as well as its parameters.
 
-3. Training data directory 
-    * Directory path to where training files are stored
-    * Contains 10 .cir circuit files and 10 .cir.csv ground truth temperature files
-    
-4. Testing data directory 
-    * Directory path to where testing files are stored
-    * Contains .cir circuit files different from the ones previously used for testing
-    
-6. Visualization (default is set to False)
-    * Boolean argument to toggle whether to save temperature output as a heat map (True) or a .csv file (False)
+3. Floorplan file (.CSV file) describes the chip floorplan. (required)
+    1. Depending on the desired simulation granularity, users can define a standard-cell-level chip floorplan with a large number of units or an architecture-level floorplan that includes microarchitectural hardware blocks.
+    2. UnitName is the name of the unit.
+    3. X and Y define the location of the unit.
+    4. Length (m) and Width (m) describe the unit size.
+    5. Label describes the material or the cooling property of the unit.
 
-7. Number of feature components (default is set to 50)
-    * Number of feature components for PCA
+4. lcf File (required)
 
-8. Number of target components (default is set to 50)
-    * Number of target components for PCA
-    
+5. Power data file (required)
+
+6. Power trace directory (required)
+
+7. Output directory (required)
+    1. Training files (power/temp pairs)
+    2. Testing files (power only)
+    3. MLPACT results
+ 
+8. Number of power trace samples (optional; default argument is set to 10)
+    1. Number of power trace samples that will be randomly selected from the given directory
+    2. Generally recommended to set n between 10 to 15
+    3. Make sure there are n or more power traces in the given directory
+ 
+9. Visualization (optional;)
+    1. Argument to toggle whether to save temperature output as a heat map (if include --visualize in command) or a .csv file (without --visulize in command)
+
+10. Number of feature components (optional; default is set to 50)
+    1. Number of feature components for PCA
+
+11. Number of target components (optional; default is set to 50)
+    1. Number of target components for PCA
+
+# Example
+
+The Example Data directory contains the following example files:
+1. ModelParams File (example_modelParams.config)
+2. Config File (example_config.config)
+3. Floorplan File (example_flp.csv)
+4. LCF File (example_lcf.csv)
+5. Power Data File (example_power_data.csv)
+6. Power Trace Directory (example_ptraces/) with 25 example power traces
+
+
 
 # Project Structure
 
