@@ -30,18 +30,18 @@ htc_correlation = pd.DataFrame(columns=col)
 #HTC = -2255.928*(T-323.15)+527649.715
 
 # All measurements are in um
-htc_correlation = htc_correlation.append(pd.DataFrame([['water', '0.45', '0.12', '0.4', '2.5', '0.25', '4', lambda T: {
-                                         x: 2093.243*(x-323.15)+128015.32 for x in T}]], columns=col))
-htc_correlation = htc_correlation.append(pd.DataFrame(
-    [['water', '0.3', '0.1', '0.2', '1', '0.2', '5', lambda T: {x: 1514.35*(x-323.15)+71790 for x in T}]], columns=col))
-htc_correlation = htc_correlation.append(pd.DataFrame([['r245fa', '0.45', '0.12', '0.4', '2.5', '0.25', '4', lambda T: {
-                                         x: -3383.526*(x-323.15)+789876 for x in T}]], columns=col))
-htc_correlation = htc_correlation.append(pd.DataFrame([['r245fa', '0.3', '0.1', '0.2', '1', '0.2', '5', lambda T: {
-                                         x: -4215.25*(x-323.15)+706299.68 for x in T}]], columns=col))
-htc_correlation = htc_correlation.append(pd.DataFrame([['r141b', '0.45', '0.12', '0.4', '2.5', '0.25', '4', lambda T: {
-                                         x: -2976.22*(x-323.15)+655915.33 for x in T}]], columns=col))
-htc_correlation = htc_correlation.append(pd.DataFrame([['r141b', '0.3', '0.1', '0.2', '1', '0.2', '5', lambda T: {
-                                         x: -2255.928*(x-323.15)+527649.715 for x in T}]], columns=col))
+htc_correlation = pd.concat([htc_correlation, pd.DataFrame([['water', '0.45', '0.12', '0.4', '2.5', '0.25', '4', lambda T: {
+                                         x: 2093.243*(x-323.15)+128015.32 for x in T}]], columns=col)], ignore_index=True)
+htc_correlation = pd.concat([htc_correlation, pd.DataFrame(
+    [['water', '0.3', '0.1', '0.2', '1', '0.2', '5', lambda T: {x: 1514.35*(x-323.15)+71790 for x in T}]], columns=col)], ignore_index=True)
+htc_correlation = pd.concat([htc_correlation, pd.DataFrame([['r245fa', '0.45', '0.12', '0.4', '2.5', '0.25', '4', lambda T: {
+                                         x: -3383.526*(x-323.15)+789876 for x in T}]], columns=col)], ignore_index=True)
+htc_correlation = pd.concat([htc_correlation, pd.DataFrame([['r245fa', '0.3', '0.1', '0.2', '1', '0.2', '5', lambda T: {
+                                         x: -4215.25*(x-323.15)+706299.68 for x in T}]], columns=col)], ignore_index=True)
+htc_correlation = pd.concat([htc_correlation, pd.DataFrame([['r141b', '0.45', '0.12', '0.4', '2.5', '0.25', '4', lambda T: {
+                                         x: -2976.22*(x-323.15)+655915.33 for x in T}]], columns=col)], ignore_index=True)
+htc_correlation = pd.concat([htc_correlation, pd.DataFrame([['r141b', '0.3', '0.1', '0.2', '1', '0.2', '5', lambda T: {
+                                         x: -2255.928*(x-323.15)+527649.715 for x in T}]], columns=col)], ignore_index=True)
 #htc_correlation=htc_correlation.append(pd.DataFrame([['water','3','1','1','1','1','1',lambda T: 30*(T-323.15)+100]],columns=col))
 
 coolant = ''

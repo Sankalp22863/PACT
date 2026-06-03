@@ -27,7 +27,8 @@ class Layer:
         self.length = self.flp_df.iloc[-1].X + \
             self.flp_df.iloc[-1]['Length (m)']
         self.width = self.flp_df.iloc[-1].Y + self.flp_df.iloc[-1]['Width (m)']
-        self.flp_df["ConfigFile"].fillna(defaultConfigFile, inplace=True)
+        self.flp_df = self.flp_df.copy()
+        self.flp_df["ConfigFile"] = self.flp_df["ConfigFile"].fillna(defaultConfigFile)
         virtual_nodes = [virtual_node_locations[x]
                          for x in flp_df['Label'].unique()]
         if("center_center" in virtual_nodes):

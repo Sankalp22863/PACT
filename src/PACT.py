@@ -145,7 +145,7 @@ if "NoPackage" in modelParams:
     noPackage_layer.loc[0, 'Thickness (m)'] = defaultConfig.get(
         'NoPackage', 'thickness (m)')
     noPackage_layer.loc[0, 'ConfigFile'] = defaultConfigFile
-    lcf_df = lcf_df.append(noPackage_layer, sort=False)
+    lcf_df = pd.concat([lcf_df, noPackage_layer], sort=False).reset_index(drop=True)
     thickness_layers[num_layers +
                      1] = float(defaultConfig.get('NoPackage', 'thickness (m)'))
 if "HeatSink" in modelParams:
@@ -162,7 +162,7 @@ if "HeatSink" in modelParams:
     HeatSpreader_layer.loc[0, 'Thickness (m)'] = defaultConfig.get(
         'HeatSink', 'heatspreader_thickness (m)')
     HeatSpreader_layer.loc[0, 'ConfigFile'] = defaultConfigFile
-    lcf_df = lcf_df.append(HeatSpreader_layer, sort=False, ignore_index=True)
+    lcf_df = pd.concat([lcf_df, HeatSpreader_layer], sort=False, ignore_index=True)
     thickness_layers[num_layers +
                      1] = float(defaultConfig.get('HeatSink', 'heatsink_thickness (m)'))
     HeatSink_layer = pd.DataFrame([], columns=[
@@ -178,7 +178,7 @@ if "HeatSink" in modelParams:
     HeatSink_layer.loc[0, 'Thickness (m)'] = defaultConfig.get(
         'HeatSink', 'heatsink_thickness (m)')
     HeatSink_layer.loc[0, 'ConfigFile'] = defaultConfigFile
-    lcf_df = lcf_df.append(HeatSink_layer, sort=False, ignore_index=True)
+    lcf_df = pd.concat([lcf_df, HeatSink_layer], sort=False, ignore_index=True)
     thickness_layers[num_layers +
                      2] = float(defaultConfig.get('HeatSink', 'heatsink_thickness (m)'))
 
@@ -195,8 +195,8 @@ for ff in flp_files:
         print('Error: Floorplan file not found', ff, ". Current directory is", os.getcwd())
         sys.exit(2)
 
-    config_label_df = config_label_df.append(
-        ff_df[['ConfigFile', 'Label']].drop_duplicates(), ignore_index=True)
+    config_label_df = pd.concat(
+        [config_label_df, ff_df[['ConfigFile', 'Label']].drop_duplicates()], ignore_index=True)
 config_label_df.drop_duplicates(inplace=True)
 config_label_df['ConfigFile'] = config_label_df['ConfigFile'].fillna(
     defaultConfigFile)
