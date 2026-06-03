@@ -218,6 +218,9 @@ class GridManager:
                     elif(label == 'HeatSink'):
                         self.label_config_dict[(label, cfile)] = LibHeatSink.defineGridProperties(
                             grid_length, grid_width, thickness, self.config._sections['HeatSink'], chip_length, chip_width)
+                    elif label in self.config._sections:
+                        self.label_config_dict[(label, cfile)] = LibSolid.defineGridProperties(
+                            grid_length, grid_width, thickness, self.config._sections[label])
 
                     for key in self.label_config_dict[(label, cfile)].keys():
                         if key.endswith("_constant"):
@@ -459,7 +462,7 @@ class GridManager:
             conditions = [mask >= 0.9]
             choice = [label]
             self.g2bmap[topY:bottomY+1, leftX:rightX +
-                        1] = np.select(conditions, choice)
+                        1] = np.select(conditions, choice, default='')
 
             mask_I = np.ones(
                 (self.I.shape[0], bottomY - topY + 1, rightX - leftX + 1))
