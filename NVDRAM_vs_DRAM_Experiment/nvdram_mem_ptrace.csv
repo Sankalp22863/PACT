@@ -1,0 +1,6 @@
+UnitName,Power,Power1,Power2
+MemArray,0.05,0.3,0.8
+RowDecoder_L,0.02,0.1,0.2
+RowDecoder_R,0.02,0.1,0.2
+SenseAmp_B,0.01,0.07,0.15
+SenseAmp_T,0.01,0.07,0.15

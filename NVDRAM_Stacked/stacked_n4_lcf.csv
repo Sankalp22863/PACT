@@ -1,0 +1,13 @@
+Layer,FloorplanFile,Thickness (m),PtraceFile,LateralHeatFlow
+0,gpu_substrate_flp.csv,1.00e-04,gpu_substrate_ptrace.csv,True
+1,gpu_feol_flp.csv,1.00e-06,gpu_feol_ptrace.csv,True
+2,gpu_beol_flp.csv,5.00e-06,gpu_beol_ptrace.csv,True
+3,hb_ubump_flp.csv,5.00e-06,hb_ubump_ptrace.csv,True
+4,nvdram_beol_flp.csv,1.00e-06,nvdram_beol_ptrace.csv,True
+5,nvdram_feol_flp.csv,1.00e-06,nvdram_feol_ptrace.csv,True
+6,nvdram_beol_flp.csv,1.00e-06,nvdram_beol_ptrace.csv,True
+7,nvdram_feol_flp.csv,1.00e-06,nvdram_feol_ptrace.csv,True
+8,nvdram_beol_flp.csv,1.00e-06,nvdram_beol_ptrace.csv,True
+9,nvdram_feol_flp.csv,1.00e-06,nvdram_feol_ptrace.csv,True
+10,nvdram_beol_flp.csv,1.00e-06,nvdram_beol_ptrace.csv,True
+11,nvdram_feol_flp.csv,1.00e-06,nvdram_feol_ptrace.csv,True

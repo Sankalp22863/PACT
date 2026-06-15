@@ -156,7 +156,7 @@ Layer numbering in output files matches the LCF: layer0 = CMOS, layer1 = 1T1C Le
 
 ## Adjusting the Simulation
 
-**Change power scenario:** Edit `nvdram_cmos_ptrace.csv` and `nvdram_mem_ptrace.csv`. Column order is idle → read → write.
+**Change power scenario:** Edit `nvdram_cmos_ptrace.csv` and `nvdram_mem_ptrace.csv`. Column order is idle -> read -> write.
 
 **Use steady-state only (no Xyce):** In `nvdram_modelParams.config`, change solver to:
 ```ini

@@ -1,0 +1,4 @@
+Layer,FloorplanFile,Thickness (m),PtraceFile,LateralHeatFlow
+0,cmos_flp.csv,0.0003,dram_cmos_ptrace.csv,True
+1,dram_bond_flp.csv,0.000002,dram_bond_ptrace.csv,True
+2,dram_die_flp.csv,0.00005,dram_die_ptrace.csv,True

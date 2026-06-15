@@ -1,0 +1,10 @@
+UnitName,Power,Power1,Power2
+MemArray,1e-06,1e-06,1e-06
+RowDecoder_L,1e-06,1e-06,1e-06
+RowDecoder_R,1e-06,1e-06,1e-06
+SenseAmp_B,1e-06,1e-06,1e-06
+SenseAmp_T,1e-06,1e-06,1e-06
+Frame_B,1e-06,1e-06,1e-06
+Frame_T,1e-06,1e-06,1e-06
+Frame_L,1e-06,1e-06,1e-06
+Frame_R,1e-06,1e-06,1e-06
