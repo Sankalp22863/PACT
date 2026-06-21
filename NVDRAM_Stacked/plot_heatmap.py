@@ -34,6 +34,7 @@ import matplotlib.pyplot as plt
 
 KELVIN = 273.15
 CMAP   = "inferno"
+SURFACE_CMAP = "jet"   # rainbow map for the flat color-plane layer view (paper image (d))
 DPI    = 150
 
 # Map floorplan file -> friendly layer name (for titles).
@@ -111,6 +112,55 @@ def _draw_macro_box(ax, side):
                                fill=False, edgecolor="cyan", lw=1.2, ls="--"))
 
 
+def plot_surface_3d(prefix, layer_id, label, out, gpu_side=0.017):
+    """Render one layer as a tilted FLAT color plane (paper image (d) style).
+
+    The plane carries no height displacement — temperature is shown purely as
+    colour on a flat surface viewed in iso/perspective, like the attached
+    "HBM Merged" figure. The lowest layer (layer 0, package/base side) is the
+    default target; the peak temperature is annotated on the figure.
+    """
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers 3d projection)
+    import matplotlib.cm as cm
+    from matplotlib.colors import Normalize
+
+    g = load_grid(prefix, layer_id)
+    if g is None:
+        raise SystemExit(f"No grid file for layer {layer_id} (prefix '{prefix}').")
+    side = g.shape[0]
+    # Physical mm coordinates so the plane footprint matches the die size.
+    extent_mm = gpu_side * 1e3
+    xs = np.linspace(0, extent_mm, side)
+    ys = np.linspace(0, extent_mm, side)
+    X, Y = np.meshgrid(xs, ys)
+    Z = np.zeros_like(g)                       # flat plane (no height bumps)
+
+    cmap = plt.get_cmap(SURFACE_CMAP)
+    norm = Normalize(vmin=g.min(), vmax=g.max())
+
+    fig = plt.figure(figsize=(7, 6))
+    ax = fig.add_subplot(111, projection="3d")
+    ax.plot_surface(X, Y, Z, facecolors=cmap(norm(g)), shade=False,
+                    linewidth=0, antialiased=True, rstride=1, cstride=1)
+    ax.view_init(elev=35, azim=-60)            # tilted, paper-like iso view
+    ax.set_xlabel("x (mm)"); ax.set_ylabel("y (mm)")
+    ax.set_zticks([])                          # flat plane -> no temperature axis
+    ax.set_box_aspect((1, 1, 0.05))            # squash z so it reads as a plane
+    ax.set_title(f"Layer {layer_id}: {label} — 2D temperature map")
+
+    peak = g.max()
+    ax.text2D(0.02, 0.95, f"Peak: {peak:.1f} °C",
+              transform=ax.transAxes, fontsize=13, fontweight="bold",
+              color="#b30000",
+              bbox=dict(boxstyle="round", fc="white", ec="#b30000", alpha=0.85))
+    mappable = cm.ScalarMappable(norm=norm, cmap=cmap)
+    mappable.set_array(g)
+    fig.colorbar(mappable, ax=ax, label="Temperature (°C)",
+                 fraction=0.03, pad=0.10, shrink=0.6)
+    fig.savefig(out)
+    print(f"  Written: {out}")
+
+
 def plot_single(prefix, layer_id, label, out):
     g = load_grid(prefix, layer_id)
     if g is None:
@@ -171,6 +221,10 @@ def main():
                    help="Plot only this layer (default: all device layers)")
     p.add_argument("--include-package", action="store_true",
                    help="Also plot the heat spreader + heat sink layers")
+    p.add_argument("--surface3d", action="store_true",
+                   help="Render a tilted flat color plane (paper image (d) style, "
+                        "color = temperature, no height) of the lowest layer "
+                        "(or --layer N) with the peak temperature annotated")
     p.add_argument("--out", default=None, help="Output image path")
     args = p.parse_args()
 
@@ -185,6 +239,13 @@ def main():
         raise SystemExit(f"No '{args.prefix}.layer*' files found. Run PACT first.")
     n_device = max(all_ids) - 1  # last two are spreader + sink
     labels = layer_labels(lcf, n_device)
+
+    if args.surface3d:
+        # Default to the lowest layer (layer 0, package/base side).
+        lid = args.layer if args.layer is not None else min(all_ids)
+        out = args.out or f"{args.prefix}.layer{lid}.surface3d.png"
+        plot_surface_3d(args.prefix, lid, labels.get(lid, "?"), out)
+        return
 
     if args.layer is not None:
         out = args.out or f"{args.prefix}.layer{args.layer}.png"

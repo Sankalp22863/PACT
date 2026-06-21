@@ -1,0 +1,12 @@
+UnitName,Power,Power1,Power2
+MEM_BL,1e-06,1e-06,1e-06
+MEM_BR,1e-06,1e-06,1e-06
+MEM_TL,1e-06,1e-06,1e-06
+MEM_TR,1e-06,1e-06,1e-06
+Frame_B,1e-06,1e-06,1e-06
+Frame_T,1e-06,1e-06,1e-06
+Frame_L,1e-06,1e-06,1e-06
+Frame_R,1e-06,1e-06,1e-06
+Cross_V,1e-06,1e-06,1e-06
+Cross_HL,1e-06,1e-06,1e-06
+Cross_HR,1e-06,1e-06,1e-06
