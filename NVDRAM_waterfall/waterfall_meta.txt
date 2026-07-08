@@ -1,0 +1,1 @@
+φ-HBM: 4 NVDRAM + 8 DRAM
