@@ -1,6 +1,0 @@
-UnitName,X,Y,Length (m),Width (m),ConfigFile,Label
-MemArray,0.001,0.001,0.0065,0.0065,,PolySi1T1C
-RowDecoder_L,0.0,0.001,0.001,0.0065,,PolySi1T1C
-RowDecoder_R,0.0075,0.001,0.001,0.0065,,PolySi1T1C
-SenseAmp_B,0.0,0.0,0.0085,0.001,,PolySi1T1C
-SenseAmp_T,0.0,0.0075,0.0085,0.001,,PolySi1T1C

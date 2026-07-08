@@ -1,0 +1,21 @@
+{
+  "name": "EXP_NVDRAM_8",
+  "title": "8 NVDRAM + 4 DRAM tiers on a 3D-stacked compute die",
+  "generate": "python3 generate.py --nv-tiers 8 --dram-tiers 4",
+  "lcf": "hybrid_lcf.csv",
+  "config": "experiment.config",
+  "modelparams": "modelParams.config",
+  "grid_prefix": "hybrid.grid.steady",
+  "gpu_side": 0.024,
+  "mem_side": 0.010,
+  "plots": ["heatmaps", "surface", "side_by_side", "cross_section", "table", "future", "peak_per_tier"],
+  "side_by_side": {
+    "left":  [1, "GPU substrate (compute die)"],
+    "right": [9, "Lowest NVDRAM tier"]
+  },
+  "compare_dram": {
+    "dir": "../EXP_DRAM_R",
+    "grid_prefix": "dram3d_3d.grid.steady",
+    "lcf": "dram3d_3d_lcf.csv"
+  }
+}

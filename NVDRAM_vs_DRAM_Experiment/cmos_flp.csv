@@ -1,6 +1,0 @@
-UnitName,X,Y,Length (m),Width (m),ConfigFile,Label
-MemArray,0.001,0.001,0.0065,0.0065,,Si
-RowDecoder_L,0.0,0.001,0.001,0.0065,,Si
-RowDecoder_R,0.0075,0.001,0.001,0.0065,,Si
-SenseAmp_B,0.0,0.0,0.0085,0.001,,Si
-SenseAmp_T,0.0,0.0075,0.0085,0.001,,Si

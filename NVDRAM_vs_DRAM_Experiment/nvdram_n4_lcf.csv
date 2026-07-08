@@ -1,6 +1,0 @@
-Layer,FloorplanFile,Thickness (m),PtraceFile,LateralHeatFlow
-0,cmos_flp.csv,3.00e-04,nvdram_cmos_ptrace.csv,True
-1,nvdram_mem_flp.csv,2.00e-06,nvdram_mem_ptrace.csv,True
-2,nvdram_mem_flp.csv,2.00e-06,nvdram_mem_ptrace.csv,True
-3,nvdram_mem_flp.csv,2.00e-06,nvdram_mem_ptrace.csv,True
-4,nvdram_mem_flp.csv,2.00e-06,nvdram_mem_ptrace.csv,True
