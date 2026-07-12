@@ -1,20 +1,36 @@
 {
   "name": "EXP_NVDRAM_12",
-  "title": "12 NVDRAM tiers (all-NVDRAM stack) on a 3D-stacked compute die",
+  "title": "12 NVDRAM tiers (all-NVDRAM stack) on a 3D-stacked compute die \u2014 paper-baseline conditions (unmerged stacks, hotspot power map)",
   "generate": "python3 generate.py --nv-tiers 12 --dram-tiers 0",
   "lcf": "hybrid_lcf.csv",
   "config": "experiment.config",
   "modelparams": "modelParams.config",
   "grid_prefix": "hybrid.grid.steady",
-  "gpu_side": 0.024,
-  "mem_side": 0.010,
-  "plots": ["heatmaps", "surface", "side_by_side", "cross_section", "table", "future", "peak_per_tier"],
+  "gpu_len": 0.03,
+  "gpu_wid": 0.022,
+  "mem_side": 0.011,
+  "pkg_margin": 0.006,
+  "plots": [
+    "heatmaps",
+    "surface",
+    "side_by_side",
+    "cross_section",
+    "table",
+    "future",
+    "peak_per_tier"
+  ],
   "side_by_side": {
-    "left":  [1, "GPU substrate (compute die)"],
-    "right": [9, "Lowest NVDRAM tier"]
+    "left": [
+      1,
+      "GPU substrate (compute die)"
+    ],
+    "right": [
+      9,
+      "Lowest NVDRAM tier"
+    ]
   },
   "compare_dram": {
-    "dir": "../EXP_DRAM_R",
+    "dir": "../EXP_DRAM_B",
     "grid_prefix": "dram3d_3d.grid.steady",
     "lcf": "dram3d_3d_lcf.csv"
   }

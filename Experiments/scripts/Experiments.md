@@ -18,8 +18,8 @@ Experiments/
 
 | Dir | What it models |
 |---|---|
-| **EXP_DRAM_R** | Four 12-Hi HBM (DRAM) stacks directly on a GPU compute die, in a 2×2 layout with a central thermal-silicon escape column. Reproduces the paper's HBM-on-GPU thermal result. |
-| **EXP_NVDRAM_S** | A hybrid stack: **N NVDRAM tiers at the bottom** (nearest the GPU) with the **DRAM (HBM) tiers continuing on top**, same 2×2 + thermal-silicon geometry. Studies the thermal cost of a low-conductivity non-volatile memory in the vertical heat-escape path. |
+| **EXP_DRAM_R** | Four 12-Hi HBM (DRAM) stacks directly on a GPU compute die, flush in the corners of the 30×22 mm die (two per short edge) with an 8 mm central thermal-silicon escape column. Reproduces the paper's HBM-on-GPU thermal result. |
+| **EXP_NVDRAM_S** | A hybrid stack: **N NVDRAM tiers at the bottom** (nearest the GPU) with the **DRAM (HBM) tiers continuing on top**, same corner-stack + central thermal-silicon geometry. Studies the thermal cost of a low-conductivity non-volatile memory in the vertical heat-escape path. |
 
 Each experiment folder has its own `README.md` with the full stack, materials,
 and power model.
@@ -64,7 +64,8 @@ build and plot it:
   "config": "experiment.config",         // material thermal properties
   "modelparams": "modelParams.config",   // solver + grid + lid settings
   "grid_prefix": "dram3d_3d.grid.steady",// PACT --gridSteadyFile prefix
-  "gpu_side": 0.024, "mem_side": 0.010,  // geometry (m), for heatmap overlays
+  "gpu_len": 0.030, "gpu_wid": 0.022, "mem_side": 0.011,  // die geometry (m), for heatmap overlays
+  "pkg_margin": 0.006,                   // PKG_MOLD ring width around the die (m); grids cover die+2*margin
   "plots": ["heatmaps", "surface", "cross_section", "table", "future"],
   "compare_dram": {                       // EXP_NVDRAM_S only, for peak_per_tier
     "dir": "../EXP_DRAM_R",

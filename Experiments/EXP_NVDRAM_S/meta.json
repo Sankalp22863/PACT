@@ -6,12 +6,28 @@
   "config": "experiment.config",
   "modelparams": "modelParams.config",
   "grid_prefix": "hybrid.grid.steady",
-  "gpu_side": 0.024,
-  "mem_side": 0.010,
-  "plots": ["heatmaps", "surface", "side_by_side", "cross_section", "table", "future", "peak_per_tier"],
+  "gpu_len": 0.03,
+  "gpu_wid": 0.022,
+  "mem_side": 0.011,
+  "pkg_margin": 0.006,
+  "plots": [
+    "heatmaps",
+    "surface",
+    "side_by_side",
+    "cross_section",
+    "table",
+    "future",
+    "peak_per_tier"
+  ],
   "side_by_side": {
-    "left":  [1, "GPU substrate (compute die)"],
-    "right": [9, "Lowest NVDRAM tier"]
+    "left": [
+      1,
+      "GPU substrate (compute die)"
+    ],
+    "right": [
+      9,
+      "Lowest NVDRAM tier"
+    ]
   },
   "compare_dram": {
     "dir": "../EXP_DRAM_R",

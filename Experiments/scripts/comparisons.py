@@ -254,7 +254,7 @@ def peak_vs_nv_fraction(profiles, out):
 
 
 # ── discovery + dispatcher ────────────────────────────────────────────────────
-def discover_profiles(exp_root=EXP_ROOT, baseline="EXP_DRAM_R"):
+def discover_profiles(exp_root=EXP_ROOT, baseline="EXP_DRAM_B"):
     """Discover EXP_NVDRAM_<n> experiments (+ optional pure-DRAM baseline)."""
     dirs = sorted(glob.glob(os.path.join(exp_root, "EXP_NVDRAM_[0-9]*")))
     profiles = [p for p in (tier_profile(d) for d in dirs) if p]
@@ -266,7 +266,7 @@ def discover_profiles(exp_root=EXP_ROOT, baseline="EXP_DRAM_R"):
     return profiles
 
 
-def make_comparisons(exp_root=EXP_ROOT, out_dir=None, baseline="EXP_DRAM_R"):
+def make_comparisons(exp_root=EXP_ROOT, out_dir=None, baseline="EXP_DRAM_B"):
     """Render all cross-experiment comparison figures into out_dir."""
     out_dir = out_dir or os.path.join(exp_root, "comparisons")
     profiles = discover_profiles(exp_root, baseline)

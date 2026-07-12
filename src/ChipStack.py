@@ -34,8 +34,11 @@ class ChipStack:
         return
 
     def getChipDimensions(self):
-        length = set(x.length for y, x in self.Layers_data.items())
-        width = set(x.width for y, x in self.Layers_data.items())
+        # Round to 12 decimals (sub-picometre) so floating-point noise from
+        # summing many block coordinates (e.g. tiled power maps) does not
+        # register as a between-layer dimension mismatch.
+        length = set(round(float(x.length), 12) for y, x in self.Layers_data.items())
+        width = set(round(float(x.width), 12) for y, x in self.Layers_data.items())
         if (len(length) != 1) and (len(width) != 1):
             print("length/width mismatch between layers")
             sys.exit(2)

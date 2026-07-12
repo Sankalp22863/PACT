@@ -1,13 +1,20 @@
 {
   "name": "EXP_DRAM_B",
-  "title": "DRAM (HBM) on a 3D compute die — paper BASELINE (no thermal silicon)",
+  "title": "DRAM (HBM) on a 3D compute die \u2014 paper BASELINE (unmerged stacks, hotspot power map)",
   "generate": "python3 generate.py",
   "lcf": "dram3d_3d_lcf.csv",
   "config": "experiment.config",
   "modelparams": "modelParams.config",
   "grid_prefix": "dram3d_3d.grid.steady",
-  "gpu_side": 0.024,
-  "mem_side": 0.010,
-  "mask_surround": true,
-  "plots": ["heatmaps", "surface", "cross_section", "table", "future"]
+  "gpu_len": 0.03,
+  "gpu_wid": 0.022,
+  "mem_side": 0.011,
+  "pkg_margin": 0.006,
+  "plots": [
+    "heatmaps",
+    "surface",
+    "cross_section",
+    "table",
+    "future"
+  ]
 }

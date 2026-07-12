@@ -20,9 +20,11 @@ memory tiers are NVDRAM (replacing that many DRAM tiers). Stack, bottom
       -> TIM -> Lid
     (PACT applies the NoPackage convective HTC boundary on top of the Lid)
 
-GPU/interface/TIM/Lid are full-die; the memory sublayers use the 2x2 macro +
-thermal-silicon cross/frame layout. NVDRAM Die Si shares `nv_tier_flp.csv` and
-DRAM Die Si shares `dram_tier_flp.csv` so per-tier tools find both.
+GPU/interface/TIM/Lid are full-die; the memory sublayers use the paper's
+Fig. 3(a) die layout: a 30 x 22 mm GPU with the four 11 x 11 mm stacks flush in
+the corners (two per short edge) and an 8 mm-wide thermal-silicon column in the
+centre. NVDRAM Die Si shares `nv_tier_flp.csv` and DRAM Die Si shares
+`dram_tier_flp.csv` so per-tier tools find both.
 
 Memory power = standby only (REPLACEMENT semantics): the memory is a fixed
 (nv_tiers + dram_tiers)-Hi stack carrying the paper's dram_per_stack budget, so
@@ -33,17 +35,28 @@ NVDRAM die conductivity (NV_DIE_SI) defaults EQUAL to DRAM silicon (k=140) -- th
 canonical choice -- so the technologies differ only in power. Lower NV_DIE_SI in
 experiment.config to model a low-k ferroelectric NVDRAM.
 
+All layers are embedded in a molded package surround (PKG_MOLD ring + extended
+copper lid, see scripts/stack_common.py) so heat can spread laterally beyond the
+die as in the paper's 65x65 mm package.
+
 Usage:
     python generate.py [--nv-tiers N] [--dram-tiers N] [--gpu-power W]
                        [--dram-per-stack W] [--dram-refresh-frac F]
-                       [--nv-leakage-factor F] [--gpu-side M] [--mem-side M]
+                       [--nv-leakage-factor F] [--gpu-len M] [--gpu-wid M]
+                       [--mem-side M] [--pkg-margin M]
 """
 
 import argparse
+import os
+import sys
 
-# ---- defaults ----
-GPU_SIDE   = 0.024     # m  (24 mm GPU base die)
-MEM_SIDE   = 0.010     # m  (10 mm memory-stack footprint)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+import stack_common as sc  # noqa: E402
+
+# ---- defaults (paper Fig. 3 die layout) ----
+GPU_LEN    = 0.030     # m  (30 mm GPU die, long side = x; 11 + 8 + 11)
+GPU_WID    = 0.022     # m  (22 mm GPU die, short side = y; 11 + 11)
+MEM_SIDE   = 0.011     # m  (11 mm memory-stack footprint)
 GPU_POWER  = 414.0     # W  (GPU active heat source)
 DRAM_PER_STACK = 40.0  # W  per 12-Hi stack (standby = leakage + refresh)
 NV_TIERS   = 4         # NVDRAM dies per stack (bottom block)
@@ -71,33 +84,33 @@ T_TIM        = 200e-6
 T_LID        = 3000e-6
 
 
-def gpu_block(gpu_side, label):
-    return [(f"{label}", 0.0, 0.0, gpu_side, gpu_side, label)]
+def gpu_block(gpu_len, gpu_wid, label):
+    return [(f"{label}", 0.0, 0.0, gpu_len, gpu_wid, label)]
 
 
-def mem_tier_blocks(gpu_side, mem_side, macro_label):
-    """4 memory stacks in 2x2 + thermal-silicon cross/frame filling the rest."""
-    g, h = gpu_side, mem_side
-    gap = g - 2 * h
-    margin = gap / 4.0
-    central = gap / 2.0
-    a0 = margin
-    a1 = margin + h
-    a2 = margin + h + central
-    a3 = margin + h + central + h
-
-    blocks = []
-    blocks.append(("MEM_BL", a0, a0, h, h, macro_label))
-    blocks.append(("MEM_BR", a2, a0, h, h, macro_label))
-    blocks.append(("MEM_TL", a0, a2, h, h, macro_label))
-    blocks.append(("MEM_TR", a2, a2, h, h, macro_label))
-    blocks.append(("Frame_B", 0.0, 0.0, g, margin, "THERMAL_SI"))
-    blocks.append(("Frame_T", 0.0, a3, g, margin, "THERMAL_SI"))
-    blocks.append(("Frame_L", 0.0, margin, margin, g - 2 * margin, "THERMAL_SI"))
-    blocks.append(("Frame_R", a3, margin, margin, g - 2 * margin, "THERMAL_SI"))
-    blocks.append(("Cross_V", a1, margin, central, g - 2 * margin, "THERMAL_SI"))
-    blocks.append(("Cross_HL", a0, a1, h, central, "THERMAL_SI"))
-    blocks.append(("Cross_HR", a2, a1, h, central, "THERMAL_SI"))
+def mem_tier_blocks(gpu_len, gpu_wid, mem_side, macro_label, filler_label="THERMAL_SI"):
+    """Paper Fig. 3(a) layout: 4 memory stacks flush in the die corners (two per
+    short edge) + a central filler column between them (8 mm thermal silicon in
+    the paper). If the die is wider than two stacks, thin filler strips pad the
+    stack columns top/bottom."""
+    h = mem_side
+    central = gpu_len - 2 * h            # central column width (paper: 8 mm)
+    my = (gpu_wid - 2 * h) / 2.0         # top/bottom margin (paper: 0)
+    xr = gpu_len - h                     # right stack-column X
+    blocks = [
+        ("MEM_BL", 0.0, my,     h, h, macro_label),
+        ("MEM_TL", 0.0, my + h, h, h, macro_label),
+        ("MEM_BR", xr,  my,     h, h, macro_label),
+        ("MEM_TR", xr,  my + h, h, h, macro_label),
+        ("Center", h, 0.0, central, gpu_wid, filler_label),
+    ]
+    if my > 1e-9:
+        blocks += [
+            ("Strip_BL", 0.0, 0.0,        h, my, filler_label),
+            ("Strip_TL", 0.0, my + 2 * h, h, my, filler_label),
+            ("Strip_BR", xr,  0.0,        h, my, filler_label),
+            ("Strip_TR", xr,  my + 2 * h, h, my, filler_label),
+        ]
     return blocks
 
 
@@ -141,42 +154,62 @@ def main():
                    help="fraction of DRAM standby power spent on refresh (NVDRAM has none)")
     p.add_argument("--nv-leakage-factor", type=float, default=NV_LEAKAGE_FACTOR,
                    help="NVDRAM leakage as a fraction of DRAM leakage (refresh = 0)")
-    p.add_argument("--gpu-side", type=float, default=GPU_SIDE)
+    p.add_argument("--gpu-len", type=float, default=GPU_LEN,
+                   help="GPU die length (x, along the stack columns), m")
+    p.add_argument("--gpu-wid", type=float, default=GPU_WID,
+                   help="GPU die width (y, the short edges carrying the stacks), m")
     p.add_argument("--mem-side", type=float, default=MEM_SIDE)
+    p.add_argument("--pkg-margin", type=float, default=sc.PKG_MARGIN,
+                   help="package mold ring width around the die (m); grid in modelParams must cover die+2*margin")
     p.add_argument("--grid", type=int, default=GRID)
     args = p.parse_args()
 
-    if args.mem_side * 2 >= args.gpu_side:
-        raise SystemExit("Need 2*mem-side < gpu-side so the 2x2 memory array fits with margins.")
+    if args.mem_side * 2 >= args.gpu_len:
+        raise SystemExit("Need 2*mem-side < gpu-len so a central column separates the stacks.")
+    if args.mem_side * 2 > args.gpu_wid + 1e-12:
+        raise SystemExit("Need 2*mem-side <= gpu-wid so two stacks fit along each short edge.")
+    m = args.pkg_margin
+
+    def ringed(blocks):
+        return sc.add_package_ring(blocks, args.gpu_len, args.gpu_wid, m)
+
+    def passive_layer(flp_path, ptrace_path, blocks):
+        write_flp(flp_path, blocks)
+        write_ptrace(ptrace_path, [b[0] for b in blocks], {})
 
     print(f"\nGenerating detailed hybrid NVDRAM-bottom / DRAM-top stack: "
-          f"GPU {args.gpu_side*1e3:g} mm @ {args.gpu_power:g} W, "
-          f"{args.nv_tiers} NVDRAM + {args.dram_tiers} DRAM tiers (4 stacks, 2x2).\n")
+          f"GPU {args.gpu_len*1e3:g} x {args.gpu_wid*1e3:g} mm @ {args.gpu_power:g} W, package "
+          f"{(args.gpu_len+2*m)*1e3:g} x {(args.gpu_wid+2*m)*1e3:g} mm, "
+          f"{args.nv_tiers} NVDRAM + {args.dram_tiers} DRAM tiers (4 corner stacks).\n")
 
-    # ---- full-die GPU + interface + package floorplans ----
-    write_flp("bspdn_flp.csv",    gpu_block(args.gpu_side, "BSPDN"))
-    write_flp("gpu_feol_flp.csv", gpu_block(args.gpu_side, "GPU_FEOL"))
-    write_flp("beol_mxy_flp.csv", gpu_block(args.gpu_side, "BEOL_MXY"))
-    write_flp("oxide_flp.csv",    gpu_block(args.gpu_side, "OXIDE"))
-    write_flp("ubump_flp.csv",    gpu_block(args.gpu_side, "GPU_HBM_UBUMP"))
-    write_flp("tim_flp.csv",      gpu_block(args.gpu_side, "TIM"))
-    write_flp("lid_flp.csv",      gpu_block(args.gpu_side, "LID"))
-    write_ptrace("bspdn_ptrace.csv",    ["BSPDN"], {})
-    write_ptrace("gpu_feol_ptrace.csv", ["GPU_FEOL"], {"GPU_FEOL": args.gpu_power})
-    write_ptrace("beol_mxy_ptrace.csv", ["BEOL_MXY"], {})
-    write_ptrace("oxide_ptrace.csv",    ["OXIDE"], {})
-    write_ptrace("ubump_ptrace.csv",    ["GPU_HBM_UBUMP"], {})
-    write_ptrace("tim_ptrace.csv",      ["TIM"], {})
-    write_ptrace("lid_ptrace.csv",      ["LID"], {})
+    # ---- GPU + interface + package floorplans (die + PKG_MOLD ring) ----
+    passive_layer("bspdn_flp.csv",    "bspdn_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "BSPDN")))
+    passive_layer("beol_mxy_flp.csv", "beol_mxy_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "BEOL_MXY")))
+    passive_layer("oxide_flp.csv",    "oxide_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "OXIDE")))
+    passive_layer("ubump_flp.csv",    "ubump_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "GPU_HBM_UBUMP")))
+    passive_layer("tim_flp.csv",      "tim_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "TIM")))
+    # the copper cold-plate lid spans the whole package
+    passive_layer("lid_flp.csv", "lid_ptrace.csv",
+                  sc.full_package_block(args.gpu_len, args.gpu_wid, m, "LID"))
 
-    # ---- memory-stack sublayer floorplans (2x2 macros + thermal-Si cross/frame) ----
-    base_beol = mem_tier_blocks(args.gpu_side, args.mem_side, "HBM_BASE_BEOL")
-    base_si   = mem_tier_blocks(args.gpu_side, args.mem_side, "HBM_BASE_SI")
-    hybond    = mem_tier_blocks(args.gpu_side, args.mem_side, "HYBRID_BOND")
-    nv_beol   = mem_tier_blocks(args.gpu_side, args.mem_side, "NV_DIE_BEOL")
-    nv_si     = mem_tier_blocks(args.gpu_side, args.mem_side, "NV_DIE_SI")
-    dram_beol = mem_tier_blocks(args.gpu_side, args.mem_side, "DRAM_BEOL")
-    dram_si   = mem_tier_blocks(args.gpu_side, args.mem_side, "DRAM_SI")
+    feol = ringed(gpu_block(args.gpu_len, args.gpu_wid, "GPU_FEOL"))
+    write_flp("gpu_feol_flp.csv", feol)
+    write_ptrace("gpu_feol_ptrace.csv", [b[0] for b in feol],
+                 {"GPU_FEOL": args.gpu_power})
+
+    # ---- memory-stack sublayers (corner stacks + central thermal-Si + ring) ----
+    base_beol = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, "HBM_BASE_BEOL"))
+    base_si   = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, "HBM_BASE_SI"))
+    hybond    = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, "HYBRID_BOND"))
+    nv_beol   = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, "NV_DIE_BEOL"))
+    nv_si     = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, "NV_DIE_SI"))
+    dram_beol = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, "DRAM_BEOL"))
+    dram_si   = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, "DRAM_SI"))
     names = [b[0] for b in dram_si]
     write_flp("hbm_base_beol_flp.csv", base_beol)
     write_flp("hbm_base_si_flp.csv",   base_si)

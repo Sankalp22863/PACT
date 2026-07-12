@@ -1,25 +1,34 @@
 """
-3D HBM-on-GPU Stack Generator  (paper BASELINE = "3D thermal penalty", no thermal silicon)
-==========================================================================================
+3D HBM-on-GPU Stack Generator  (paper BASELINE = "3D thermal penalty", 141.7 C)
+===============================================================================
 Same detailed HBM-on-GPU stack as EXP_DRAM_R, but this variant reproduces the
-paper's *un-optimized* baseline -- the leftmost "3D thermal penalty" bar of the
-IEDM STCO staircase (GPU peak 141.7 C in "Breaking Thermal Bottleneck in 3D
+paper's *un-optimized* 3D baseline -- the leftmost "3D thermal penalty" point of
+the IEDM STCO staircase (GPU peak 141.7 C in "Breaking Thermal Bottleneck in 3D
 HBM-on-GPU Integration via System-Technology Co-Optimization", imec, IEDM 2025).
 
-The ONLY difference from EXP_DRAM_R is the cross/frame filler material:
+The paper's baseline differs from the merged/optimized case (EXP_DRAM_R) in two
+ways, both modelled here:
 
-  * EXP_DRAM_R (optimized) : cross/frame = THERMAL_SI  (k = 140 W/m-K)
-                             -> high-k vertical/lateral heat-escape paths
-                             -> "thermal silicon optimization" already applied.
-  * EXP_DRAM_B (baseline)  : cross/frame = MOLD         (k = 0.8 W/m-K)
-                             -> standard epoxy mold compound between/around the
-                                HBM stacks; no thermal-silicon escape path, so
-                                heat is forced up through the low-k DRAM BEOL /
-                                hybrid-bond bottleneck -> the "thermal penalty".
+  1. UNMERGED STACKS: the two adjacent HBM stacks on each short edge are
+     separated by a thin mold gap (~0.1 mm of k=3 W/m-K mold in the paper).
+     The 0.5 mm grid cannot resolve 0.1 mm, so the gap is modelled 1.0 mm wide
+     with k scaled x10 (k_eff = 30 W/m-K) to preserve the same lateral thermal
+     resistance (see [MOLD] in experiment.config).
+  2. NON-UNIFORM GPU POWER: the paper applies commercial 0.5 mm-resolution power
+     maps; those are not public, so a structured stand-in is used (see
+     scripts/stack_common.py): a compute-cluster lattice with correlated
+     seeded-random utilisation and an asymmetric activity tilt, a powered
+     central L2/NoC column, and a low-power IO ring, at 0.5 mm tiles. The tile
+     peak-to-average ratio (--map-p2a) is the single knob, calibrated so this
+     baseline reproduces the paper's 141.7 C GPU peak.
 
-The paper does not publish the exact baseline gap-fill conductivity, so MOLD uses
-the industry-standard epoxy mold compound value (k ~ 0.8 W/m-K); tune it in
-experiment.config or via --mold-k.
+The central column between the stack pairs is THERMAL_SI in the paper's baseline
+already ("thermal silicon fills the central void"), so it stays THERMAL_SI here.
+All layers are embedded in a molded package surround (PKG_MOLD ring + extended
+copper lid, see stack_common.add_package_ring) so heat can spread laterally
+beyond the die as in the paper's 65x65 mm package.
+--merged removes the mold gaps and --power-map uniform restores the flat 414 W
+map (together those reproduce EXP_DRAM_R).
 
 Stack, bottom (adiabatic package side, layer 0) -> top (lid / cold-plate side):
 
@@ -32,24 +41,34 @@ Stack, bottom (adiabatic package side, layer 0) -> top (lid / cold-plate side):
 
 Usage:
     python generate.py [--gpu-power W] [--hbm-per-stack W] [--tiers N]
-                       [--gpu-side M] [--hbm-side M] [--grid N] [--no-base-die]
-                       [--optimized]     # use THERMAL_SI instead of MOLD (= EXP_DRAM_R)
+                       [--gpu-len M] [--gpu-wid M] [--hbm-side M] [--no-base-die]
+                       [--gap-wid M] [--merged] [--pkg-margin M]
+                       [--power-map {cluster,uniform}] [--map-p2a R] [--map-seed N]
 """
 
 import argparse
+import os
+import sys
 
-# ---- defaults (paper-representative) ----
-GPU_SIDE   = 0.024     # m  (24 mm GPU base die)
-HBM_SIDE   = 0.010     # m  (10 mm HBM stack footprint)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+import stack_common as sc  # noqa: E402
+
+# ---- defaults (paper Fig. 3 die layout) ----
+GPU_LEN    = 0.030     # m  (30 mm GPU die, long side = x; 11 + 8 + 11)
+GPU_WID    = 0.022     # m  (22 mm GPU die, short side = y)
+HBM_SIDE   = 0.011     # m  (11 mm HBM stack footprint, x)
+GAP_WID    = 0.001     # m  (grid-resolvable stand-in for the paper's 0.1 mm mold
+                       #     gap between adjacent stacks; k scaled to compensate)
 GPU_POWER  = 414.0     # W  (nominal 1.0f AI workload)
 HBM_PER_STACK = 40.0   # W  per 12-Hi stack
 TIERS      = 12        # DRAM dies per stack
-GRID       = 48
 EPS        = 1e-6      # passive-block placeholder power (W)
 
-# ---- cross/frame filler: BASELINE uses mold (no thermal silicon) ----
-FILLER_BASELINE  = "MOLD"        # epoxy mold compound, k ~ 0.8 W/m-K  (paper baseline)
-FILLER_OPTIMIZED = "THERMAL_SI"  # high-k dummy silicon, k = 140       (= EXP_DRAM_R)
+MAP_P2A    = 2.19      # cluster-map tile peak-to-average ratio (calibrated so
+                       #     the baseline reproduces the paper's 141.7 C GPU peak)
+
+FILLER_CENTER = "THERMAL_SI"  # paper baseline: thermal Si fills the central void
+FILLER_GAP    = "MOLD"        # inter-stack gap (equivalent-k mold, see config)
 
 # ---- layer thicknesses (m), from the paper cross-section table ----
 T_BSPDN      = 1.715e-6
@@ -67,41 +86,32 @@ T_TIM        = 200e-6
 T_LID        = 3000e-6
 
 
-def gpu_block(gpu_side, label):
-    """Single full-die block covering the whole footprint."""
-    return [(f"{label}", 0.0, 0.0, gpu_side, gpu_side, label)]
+def gpu_block(gpu_len, gpu_wid, label):
+    """Single full-die block covering the whole die footprint (die-local)."""
+    return [(f"{label}", 0.0, 0.0, gpu_len, gpu_wid, label)]
 
 
-def hbm_tier_blocks(gpu_side, hbm_side, macro_label, filler_label):
-    """4 HBM stacks in 2x2 + cross/frame filler filling the rest.
-
-    The four stack footprints carry `macro_label`; the cross/frame is
-    `filler_label` -- THERMAL_SI (k=140, optimized) or MOLD (k=0.8, baseline).
-    In the baseline the filler is a poor vertical conductor, so the inter-stack
-    region no longer provides a heat-escape path. Returns (name, X, Y, L, W,
-    Label) blocks tiling the die with no gaps/overlaps.
-    """
-    g, h = gpu_side, hbm_side
-    gap = g - 2 * h
-    margin = gap / 4.0
-    central = gap / 2.0
-    a0 = margin
-    a1 = margin + h
-    a2 = margin + h + central
-    a3 = margin + h + central + h
-
-    blocks = []
-    blocks.append(("HBM_BL", a0, a0, h, h, macro_label))
-    blocks.append(("HBM_BR", a2, a0, h, h, macro_label))
-    blocks.append(("HBM_TL", a0, a2, h, h, macro_label))
-    blocks.append(("HBM_TR", a2, a2, h, h, macro_label))
-    blocks.append(("Frame_B", 0.0, 0.0, g, margin, filler_label))
-    blocks.append(("Frame_T", 0.0, a3, g, margin, filler_label))
-    blocks.append(("Frame_L", 0.0, margin, margin, g - 2 * margin, filler_label))
-    blocks.append(("Frame_R", a3, margin, margin, g - 2 * margin, filler_label))
-    blocks.append(("Cross_V", a1, margin, central, g - 2 * margin, filler_label))
-    blocks.append(("Cross_HL", a0, a1, h, central, filler_label))
-    blocks.append(("Cross_HR", a2, a1, h, central, filler_label))
+def hbm_tier_blocks(gpu_len, gpu_wid, hbm_side, gap_wid, macro_label):
+    """Paper Fig. 3(a) baseline layout (die-local): 4 HBM stacks in the die
+    corners (two per short edge), a mold gap of `gap_wid` between the two stacks
+    on each edge (the un-merged baseline; 0 = merged), and the central
+    THERMAL_SI column."""
+    h = hbm_side
+    central = gpu_len - 2 * h            # central column width (paper: 8 mm)
+    sy = (gpu_wid - gap_wid) / 2.0       # stack extent in y
+    xr = gpu_len - h                     # right stack-column X
+    blocks = [
+        ("HBM_BL", 0.0, 0.0,            h, sy, macro_label),
+        ("HBM_TL", 0.0, sy + gap_wid,   h, sy, macro_label),
+        ("HBM_BR", xr,  0.0,            h, sy, macro_label),
+        ("HBM_TR", xr,  sy + gap_wid,   h, sy, macro_label),
+        ("Center", h, 0.0, central, gpu_wid, FILLER_CENTER),
+    ]
+    if gap_wid > 1e-9:
+        blocks += [
+            ("Gap_L", 0.0, sy, h, gap_wid, FILLER_GAP),
+            ("Gap_R", xr,  sy, h, gap_wid, FILLER_GAP),
+        ]
     return blocks
 
 
@@ -135,53 +145,93 @@ def write_lcf(layers, path):
 
 
 def main():
-    p = argparse.ArgumentParser(description="Generate PACT inputs for the BASELINE 3D HBM-on-GPU stack (no thermal silicon).")
+    p = argparse.ArgumentParser(description="Generate PACT inputs for the BASELINE 3D HBM-on-GPU stack (unmerged stacks, non-uniform power, package surround).")
     p.add_argument("--gpu-power", type=float, default=GPU_POWER)
     p.add_argument("--hbm-per-stack", type=float, default=HBM_PER_STACK)
     p.add_argument("--tiers", type=int, default=TIERS)
-    p.add_argument("--gpu-side", type=float, default=GPU_SIDE)
+    p.add_argument("--gpu-len", type=float, default=GPU_LEN,
+                   help="GPU die length (x, along the stack columns), m")
+    p.add_argument("--gpu-wid", type=float, default=GPU_WID,
+                   help="GPU die width (y, the short edges carrying the stacks), m")
     p.add_argument("--hbm-side", type=float, default=HBM_SIDE)
-    p.add_argument("--grid", type=int, default=GRID)
+    p.add_argument("--gap-wid", type=float, default=GAP_WID,
+                   help="mold gap between the two stacks on each edge (m); pair with the equivalent-k [MOLD] entry")
+    p.add_argument("--merged", action="store_true",
+                   help="Remove the inter-stack mold gaps (the paper's 'HBM stack merging')")
+    p.add_argument("--pkg-margin", type=float, default=sc.PKG_MARGIN,
+                   help="package mold ring width around the die (m); grid in modelParams must cover die+2*margin")
+    p.add_argument("--power-map", choices=["cluster", "uniform"], default="cluster",
+                   help="GPU FEOL power: structured cluster map (paper-like) or uniform")
+    p.add_argument("--map-p2a", type=float, default=MAP_P2A,
+                   help="tile peak-to-average power-density ratio of the cluster map")
+    p.add_argument("--map-seed", type=int, default=sc.MAP_SEED,
+                   help="seed for the cluster map's utilisation pattern")
     p.add_argument("--no-base-die", action="store_true",
                    help="Remove the HBM base die (the paper's 'base die removal' study)")
-    p.add_argument("--optimized", action="store_true",
-                   help="Use THERMAL_SI (k=140) cross/frame instead of MOLD -> reproduces EXP_DRAM_R")
     args = p.parse_args()
 
-    if args.hbm_side * 2 >= args.gpu_side:
-        raise SystemExit("Need 2*hbm-side < gpu-side so the 2x2 HBM array fits with margins.")
+    if args.hbm_side * 2 >= args.gpu_len:
+        raise SystemExit("Need 2*hbm-side < gpu-len so a central column separates the stacks.")
+    if args.hbm_side * 2 > args.gpu_wid + 1e-12:
+        raise SystemExit("Need 2*hbm-side <= gpu-wid so two stacks fit along each short edge.")
+    gap = 0.0 if args.merged else args.gap_wid
+    m = args.pkg_margin
 
-    filler = FILLER_OPTIMIZED if args.optimized else FILLER_BASELINE
+    def ringed(blocks):
+        return sc.add_package_ring(blocks, args.gpu_len, args.gpu_wid, m)
 
-    print(f"\nGenerating {'OPTIMIZED' if args.optimized else 'BASELINE'} 3D HBM-on-GPU stack: "
-          f"GPU {args.gpu_side*1e3:g} mm @ {args.gpu_power:g} W, "
+    print(f"\nGenerating BASELINE 3D HBM-on-GPU stack: "
+          f"GPU {args.gpu_len*1e3:g} x {args.gpu_wid*1e3:g} mm @ {args.gpu_power:g} W "
+          f"({args.power_map} power map), package "
+          f"{(args.gpu_len+2*m)*1e3:g} x {(args.gpu_wid+2*m)*1e3:g} mm, "
           f"4 HBM stacks @ {args.hbm_per_stack:g} W ({args.tiers}-Hi"
           f"{'' if not args.no_base_die else ', base die removed'});"
-          f" cross/frame filler = {filler}.\n")
+          f" inter-stack gap = {gap*1e3:g} mm {FILLER_GAP if gap else '(merged)'}.\n")
 
-    # ---- full-die GPU + interface + package floorplans ----
-    write_flp("bspdn_flp.csv",    gpu_block(args.gpu_side, "BSPDN"))
-    write_flp("gpu_feol_flp.csv", gpu_block(args.gpu_side, "GPU_FEOL"))
-    write_flp("beol_mxy_flp.csv", gpu_block(args.gpu_side, "BEOL_MXY"))
-    write_flp("oxide_flp.csv",    gpu_block(args.gpu_side, "OXIDE"))
-    write_flp("ubump_flp.csv",    gpu_block(args.gpu_side, "GPU_HBM_UBUMP"))
-    write_flp("tim_flp.csv",      gpu_block(args.gpu_side, "TIM"))
-    write_flp("lid_flp.csv",      gpu_block(args.gpu_side, "LID"))
+    # ---- GPU + interface + package floorplans (die + PKG_MOLD ring) ----
+    # every ptrace lists ALL blocks of its floorplan (ring blocks are passive)
+    def passive_layer(flp_path, ptrace_path, blocks):
+        write_flp(flp_path, blocks)
+        write_ptrace(ptrace_path, [b[0] for b in blocks], {})
 
-    write_ptrace("bspdn_ptrace.csv",    ["BSPDN"], {})
-    write_ptrace("gpu_feol_ptrace.csv", ["GPU_FEOL"], {"GPU_FEOL": args.gpu_power})
-    write_ptrace("beol_mxy_ptrace.csv", ["BEOL_MXY"], {})
-    write_ptrace("oxide_ptrace.csv",    ["OXIDE"], {})
-    write_ptrace("ubump_ptrace.csv",    ["GPU_HBM_UBUMP"], {})
-    write_ptrace("tim_ptrace.csv",      ["TIM"], {})
-    write_ptrace("lid_ptrace.csv",      ["LID"], {})
+    passive_layer("bspdn_flp.csv",    "bspdn_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "BSPDN")))
+    passive_layer("beol_mxy_flp.csv", "beol_mxy_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "BEOL_MXY")))
+    passive_layer("oxide_flp.csv",    "oxide_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "OXIDE")))
+    passive_layer("ubump_flp.csv",    "ubump_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "GPU_HBM_UBUMP")))
+    passive_layer("tim_flp.csv",      "tim_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "TIM")))
+    # the copper cold-plate lid spans the whole package
+    passive_layer("lid_flp.csv", "lid_ptrace.csv",
+                  sc.full_package_block(args.gpu_len, args.gpu_wid, m, "LID"))
 
-    # ---- HBM-stack sublayer floorplans (2x2 macros + cross/frame filler) ----
-    base_beol = hbm_tier_blocks(args.gpu_side, args.hbm_side, "HBM_BASE_BEOL", filler)
-    base_si   = hbm_tier_blocks(args.gpu_side, args.hbm_side, "HBM_BASE_SI", filler)
-    hybond    = hbm_tier_blocks(args.gpu_side, args.hbm_side, "HYBRID_BOND", filler)
-    dram_beol = hbm_tier_blocks(args.gpu_side, args.hbm_side, "DRAM_BEOL", filler)
-    dram_si   = hbm_tier_blocks(args.gpu_side, args.hbm_side, "DRAM_SI", filler)
+    # GPU FEOL: structured cluster map, or a uniform single die block
+    if args.power_map == "uniform":
+        feol = ringed(gpu_block(args.gpu_len, args.gpu_wid, "GPU_FEOL"))
+        write_flp("gpu_feol_flp.csv", feol)
+        write_ptrace("gpu_feol_ptrace.csv", [b[0] for b in feol],
+                     {"GPU_FEOL": args.gpu_power})
+    else:
+        tiles, tile_power = sc.cluster_power_tiles(args.gpu_len, args.gpu_wid,
+                                                   args.gpu_power, args.map_p2a,
+                                                   seed=args.map_seed)
+        feol = ringed(tiles)
+        write_flp("gpu_feol_flp.csv", feol)
+        write_ptrace("gpu_feol_ptrace.csv", [b[0] for b in feol], tile_power)
+        avg = args.gpu_power / len(tiles)
+        print(f"  Cluster map: {len(tiles)} tiles of {sc.POWER_TILE*1e3:g} mm, "
+              f"peak {max(tile_power.values()):.3f} W / avg {avg:.3f} W per tile "
+              f"(p2a = {max(tile_power.values())/avg:.2f}, seed {args.map_seed})")
+
+    # ---- HBM-stack sublayers (corner stacks + gaps + central Si + ring) ----
+    base_beol = ringed(hbm_tier_blocks(args.gpu_len, args.gpu_wid, args.hbm_side, gap, "HBM_BASE_BEOL"))
+    base_si   = ringed(hbm_tier_blocks(args.gpu_len, args.gpu_wid, args.hbm_side, gap, "HBM_BASE_SI"))
+    hybond    = ringed(hbm_tier_blocks(args.gpu_len, args.gpu_wid, args.hbm_side, gap, "HYBRID_BOND"))
+    dram_beol = ringed(hbm_tier_blocks(args.gpu_len, args.gpu_wid, args.hbm_side, gap, "DRAM_BEOL"))
+    dram_si   = ringed(hbm_tier_blocks(args.gpu_len, args.gpu_wid, args.hbm_side, gap, "DRAM_SI"))
     names = [b[0] for b in dram_si]
     write_flp("hbm_base_beol_flp.csv", base_beol)
     write_flp("hbm_base_si_flp.csv",   base_si)
@@ -224,12 +274,12 @@ def main():
           f"  (5 GPU/interface + {0 if args.no_base_die else 2} base die"
           f" + {3*args.tiers} DRAM sublayers + TIM + Lid)"
           f"  + NoPackage HTC boundary on the Lid")
-    print(f"  Filler: cross/frame = {filler}"
-          f"  ({'k=140 high-k escape path (optimized)' if args.optimized else 'k=0.8 mold, no escape path (BASELINE thermal penalty)'})")
-    print(f"  Power : GPU {args.gpu_power:g} W + HBM {total_mem:g} W"
+    print(f"  Layout: central {FILLER_CENTER} column; inter-stack gap"
+          f" {gap*1e3:g} mm {FILLER_GAP} (equivalent-k for the paper's 0.1 mm)"
+          if gap else "  Layout: central THERMAL_SI column; stacks merged")
+    print(f"  Ring  : {m*1e3:g} mm {sc.RING_LABEL} package surround, lid spans the package")
+    print(f"  Power : GPU {args.gpu_power:g} W ({args.power_map}) + HBM {total_mem:g} W"
           f" = {args.gpu_power + total_mem:g} W total")
-    print(f"  Grid  : {args.grid}x{args.grid} on {args.gpu_side*1e3:g} mm die"
-          f"  ({args.gpu_side/args.grid*1e3:.3f} mm/cell)")
     print(f"  LCF   : {lcf_path}\n")
 
 

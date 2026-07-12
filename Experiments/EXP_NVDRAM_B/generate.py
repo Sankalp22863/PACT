@@ -1,21 +1,27 @@
 """
-Hybrid NVDRAM-bottom / DRAM-top 3D-Integration Generator (paper BASELINE, no thermal silicon)
-=============================================================================================
+Hybrid NVDRAM-bottom / DRAM-top Generator (paper-baseline conditions: unmerged stacks + cluster map)
+====================================================================================================
 Same detailed hybrid stack as EXP_NVDRAM_S, but this variant reproduces the
 paper's *un-optimized* baseline (the "3D thermal penalty" regime of the IEDM
 STCO staircase, "Breaking Thermal Bottleneck in 3D HBM-on-GPU Integration via
 System-Technology Co-Optimization", imec, IEDM 2025).
 
-The ONLY difference from EXP_NVDRAM_S is the cross/frame filler material between
-and around the four memory stacks:
+Like EXP_DRAM_B, this variant models the paper's baseline two ways in which it
+differs from the merged/optimized case (EXP_NVDRAM_S):
 
-  * EXP_NVDRAM_S (optimized) : cross/frame = THERMAL_SI  (k = 140 W/m-K)
-                               -> high-k vertical/lateral heat-escape paths
-                               -> "thermal silicon optimization" already applied.
-  * EXP_NVDRAM_B (baseline)  : cross/frame = MOLD         (k = 0.8 W/m-K)
-                               -> standard epoxy mold compound; no escape path,
-                                  heat forced up through the low-k memory-die
-                                  BEOL / hybrid-bond bottleneck (thermal penalty).
+  1. UNMERGED STACKS: a thin mold gap separates the two memory stacks on each
+     short edge (paper: ~0.1 mm of k=3 mold; modelled 1.0 mm wide with
+     k_eff = 30 W/m-K to preserve the lateral resistance -- see [MOLD]).
+  2. NON-UNIFORM GPU POWER: a structured cluster power map (see
+     scripts/stack_common.py -- correlated seeded-random cluster utilisation,
+     asymmetric activity tilt, powered central L2/NoC column, IO edge ring);
+     tile peak-to-average set by --map-p2a, default calibrated on EXP_DRAM_B
+     to the paper's 141.7 C baseline.
+
+The central column stays THERMAL_SI (part of the paper's baseline already).
+All layers are embedded in a molded package surround (PKG_MOLD ring + extended
+copper lid) so heat can spread laterally beyond the die.
+--merged and --power-map uniform together reproduce EXP_NVDRAM_S.
 
 Stack, bottom (adiabatic package side) -> top (lid):
 
@@ -35,15 +41,27 @@ dies, each dissipating  nv_leakage_factor * (DRAM leakage)  + 0 refresh.
 Usage:
     python generate.py [--nv-tiers N] [--dram-tiers N] [--gpu-power W]
                        [--dram-per-stack W] [--dram-refresh-frac F]
-                       [--nv-leakage-factor F] [--gpu-side M] [--mem-side M]
-                       [--optimized]     # use THERMAL_SI instead of MOLD (= EXP_NVDRAM_S)
+                       [--nv-leakage-factor F] [--gpu-len M] [--gpu-wid M]
+                       [--mem-side M] [--gap-wid M] [--merged] [--pkg-margin M]
+                       [--power-map {cluster,uniform}] [--map-p2a R] [--map-seed N]
 """
 
 import argparse
+import os
+import sys
 
-# ---- defaults ----
-GPU_SIDE   = 0.024     # m  (24 mm GPU base die)
-MEM_SIDE   = 0.010     # m  (10 mm memory-stack footprint)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+import stack_common as sc  # noqa: E402
+
+# ---- defaults (paper Fig. 3 die layout) ----
+GPU_LEN    = 0.030     # m  (30 mm GPU die, long side = x; 11 + 8 + 11)
+GPU_WID    = 0.022     # m  (22 mm GPU die, short side = y; 11 + 11)
+MEM_SIDE   = 0.011     # m  (11 mm memory-stack footprint)
+GAP_WID    = 0.001     # m  (grid-resolvable stand-in for the paper's 0.1 mm mold
+                       #     gap between adjacent stacks; k scaled to compensate)
+
+MAP_P2A    = 2.19      # cluster-map tile peak-to-average ratio (calibrated on
+                       #     EXP_DRAM_B against the paper's 141.7 C GPU peak)
 GPU_POWER  = 414.0     # W  (GPU active heat source)
 DRAM_PER_STACK = 40.0  # W  per 12-Hi stack (standby = leakage + refresh)
 NV_TIERS   = 4         # NVDRAM dies per stack (bottom block)
@@ -51,9 +69,10 @@ DRAM_TIERS = 8         # DRAM dies per stack (top block)
 GRID       = 48
 EPS        = 1e-6
 
-# ---- cross/frame filler: BASELINE uses mold (no thermal silicon) ----
-FILLER_BASELINE  = "MOLD"        # epoxy mold compound, k ~ 0.8 W/m-K  (paper baseline)
-FILLER_OPTIMIZED = "THERMAL_SI"  # high-k dummy silicon, k = 140       (= EXP_NVDRAM_S)
+# ---- fillers: central column is thermal Si (paper baseline); the baseline
+# penalty lives in the inter-stack MOLD gap (equivalent-k, see config) ----
+FILLER_CENTER = "THERMAL_SI"
+FILLER_GAP    = "MOLD"
 
 # ---- memory standby-power model (background only: leakage + refresh) ----
 DRAM_REFRESH_FRAC = 0.35   # fraction of DRAM standby power spent on refresh
@@ -75,37 +94,30 @@ T_TIM        = 200e-6
 T_LID        = 3000e-6
 
 
-def gpu_block(gpu_side, label):
-    return [(f"{label}", 0.0, 0.0, gpu_side, gpu_side, label)]
+def gpu_block(gpu_len, gpu_wid, label):
+    return [(f"{label}", 0.0, 0.0, gpu_len, gpu_wid, label)]
 
 
-def mem_tier_blocks(gpu_side, mem_side, macro_label, filler_label):
-    """4 memory stacks in 2x2 + cross/frame filler filling the rest.
-
-    The four stack footprints carry `macro_label`; the cross/frame is
-    `filler_label` -- THERMAL_SI (k=140, optimized) or MOLD (k=0.8, baseline).
-    """
-    g, h = gpu_side, mem_side
-    gap = g - 2 * h
-    margin = gap / 4.0
-    central = gap / 2.0
-    a0 = margin
-    a1 = margin + h
-    a2 = margin + h + central
-    a3 = margin + h + central + h
-
-    blocks = []
-    blocks.append(("MEM_BL", a0, a0, h, h, macro_label))
-    blocks.append(("MEM_BR", a2, a0, h, h, macro_label))
-    blocks.append(("MEM_TL", a0, a2, h, h, macro_label))
-    blocks.append(("MEM_TR", a2, a2, h, h, macro_label))
-    blocks.append(("Frame_B", 0.0, 0.0, g, margin, filler_label))
-    blocks.append(("Frame_T", 0.0, a3, g, margin, filler_label))
-    blocks.append(("Frame_L", 0.0, margin, margin, g - 2 * margin, filler_label))
-    blocks.append(("Frame_R", a3, margin, margin, g - 2 * margin, filler_label))
-    blocks.append(("Cross_V", a1, margin, central, g - 2 * margin, filler_label))
-    blocks.append(("Cross_HL", a0, a1, h, central, filler_label))
-    blocks.append(("Cross_HR", a2, a1, h, central, filler_label))
+def mem_tier_blocks(gpu_len, gpu_wid, mem_side, gap_wid, macro_label):
+    """Paper Fig. 3(a) baseline layout: 4 memory stacks in the die corners (two
+    per short edge), a mold gap of `gap_wid` between the two stacks on each edge
+    (the un-merged baseline; 0 = merged), and the central THERMAL_SI column."""
+    h = mem_side
+    central = gpu_len - 2 * h            # central column width (paper: 8 mm)
+    sy = (gpu_wid - gap_wid) / 2.0       # stack extent in y
+    xr = gpu_len - h                     # right stack-column X
+    blocks = [
+        ("MEM_BL", 0.0, 0.0,          h, sy, macro_label),
+        ("MEM_TL", 0.0, sy + gap_wid, h, sy, macro_label),
+        ("MEM_BR", xr,  0.0,          h, sy, macro_label),
+        ("MEM_TR", xr,  sy + gap_wid, h, sy, macro_label),
+        ("Center", h, 0.0, central, gpu_wid, FILLER_CENTER),
+    ]
+    if gap_wid > 1e-9:
+        blocks += [
+            ("Gap_L", 0.0, sy, h, gap_wid, FILLER_GAP),
+            ("Gap_R", xr,  sy, h, gap_wid, FILLER_GAP),
+        ]
     return blocks
 
 
@@ -149,47 +161,88 @@ def main():
                    help="fraction of DRAM standby power spent on refresh (NVDRAM has none)")
     p.add_argument("--nv-leakage-factor", type=float, default=NV_LEAKAGE_FACTOR,
                    help="NVDRAM leakage as a fraction of DRAM leakage (refresh = 0)")
-    p.add_argument("--gpu-side", type=float, default=GPU_SIDE)
+    p.add_argument("--gpu-len", type=float, default=GPU_LEN,
+                   help="GPU die length (x, along the stack columns), m")
+    p.add_argument("--gpu-wid", type=float, default=GPU_WID,
+                   help="GPU die width (y, the short edges carrying the stacks), m")
     p.add_argument("--mem-side", type=float, default=MEM_SIDE)
+    p.add_argument("--gap-wid", type=float, default=GAP_WID,
+                   help="mold gap between the two stacks on each edge (m); pair with the equivalent-k [MOLD] entry")
+    p.add_argument("--merged", action="store_true",
+                   help="Remove the inter-stack mold gaps (the paper's 'HBM stack merging')")
+    p.add_argument("--pkg-margin", type=float, default=sc.PKG_MARGIN,
+                   help="package mold ring width around the die (m); grid in modelParams must cover die+2*margin")
+    p.add_argument("--power-map", choices=["cluster", "uniform"], default="cluster",
+                   help="GPU FEOL power: structured cluster map (paper-like) or uniform")
+    p.add_argument("--map-p2a", type=float, default=MAP_P2A,
+                   help="tile peak-to-average power-density ratio of the cluster map")
+    p.add_argument("--map-seed", type=int, default=sc.MAP_SEED,
+                   help="seed for the cluster map's utilisation pattern")
     p.add_argument("--grid", type=int, default=GRID)
-    p.add_argument("--optimized", action="store_true",
-                   help="Use THERMAL_SI (k=140) cross/frame instead of MOLD -> reproduces EXP_NVDRAM_S")
     args = p.parse_args()
 
-    if args.mem_side * 2 >= args.gpu_side:
-        raise SystemExit("Need 2*mem-side < gpu-side so the 2x2 memory array fits with margins.")
+    if args.mem_side * 2 >= args.gpu_len:
+        raise SystemExit("Need 2*mem-side < gpu-len so a central column separates the stacks.")
+    if args.mem_side * 2 > args.gpu_wid + 1e-12:
+        raise SystemExit("Need 2*mem-side <= gpu-wid so two stacks fit along each short edge.")
+    gap = 0.0 if args.merged else args.gap_wid
+    m = args.pkg_margin
 
-    filler = FILLER_OPTIMIZED if args.optimized else FILLER_BASELINE
+    def ringed(blocks):
+        return sc.add_package_ring(blocks, args.gpu_len, args.gpu_wid, m)
 
-    print(f"\nGenerating {'OPTIMIZED' if args.optimized else 'BASELINE'} hybrid NVDRAM-bottom / DRAM-top stack: "
-          f"GPU {args.gpu_side*1e3:g} mm @ {args.gpu_power:g} W, "
-          f"{args.nv_tiers} NVDRAM + {args.dram_tiers} DRAM tiers (4 stacks, 2x2);"
-          f" cross/frame filler = {filler}.\n")
+    def passive_layer(flp_path, ptrace_path, blocks):
+        write_flp(flp_path, blocks)
+        write_ptrace(ptrace_path, [b[0] for b in blocks], {})
 
-    # ---- full-die GPU + interface + package floorplans ----
-    write_flp("bspdn_flp.csv",    gpu_block(args.gpu_side, "BSPDN"))
-    write_flp("gpu_feol_flp.csv", gpu_block(args.gpu_side, "GPU_FEOL"))
-    write_flp("beol_mxy_flp.csv", gpu_block(args.gpu_side, "BEOL_MXY"))
-    write_flp("oxide_flp.csv",    gpu_block(args.gpu_side, "OXIDE"))
-    write_flp("ubump_flp.csv",    gpu_block(args.gpu_side, "GPU_HBM_UBUMP"))
-    write_flp("tim_flp.csv",      gpu_block(args.gpu_side, "TIM"))
-    write_flp("lid_flp.csv",      gpu_block(args.gpu_side, "LID"))
-    write_ptrace("bspdn_ptrace.csv",    ["BSPDN"], {})
-    write_ptrace("gpu_feol_ptrace.csv", ["GPU_FEOL"], {"GPU_FEOL": args.gpu_power})
-    write_ptrace("beol_mxy_ptrace.csv", ["BEOL_MXY"], {})
-    write_ptrace("oxide_ptrace.csv",    ["OXIDE"], {})
-    write_ptrace("ubump_ptrace.csv",    ["GPU_HBM_UBUMP"], {})
-    write_ptrace("tim_ptrace.csv",      ["TIM"], {})
-    write_ptrace("lid_ptrace.csv",      ["LID"], {})
+    print(f"\nGenerating BASELINE hybrid NVDRAM-bottom / DRAM-top stack: "
+          f"GPU {args.gpu_len*1e3:g} x {args.gpu_wid*1e3:g} mm @ {args.gpu_power:g} W "
+          f"({args.power_map} power map), package "
+          f"{(args.gpu_len+2*m)*1e3:g} x {(args.gpu_wid+2*m)*1e3:g} mm, "
+          f"{args.nv_tiers} NVDRAM + {args.dram_tiers} DRAM tiers (4 corner stacks);"
+          f" inter-stack gap = {gap*1e3:g} mm {FILLER_GAP if gap else '(merged)'}.\n")
 
-    # ---- memory-stack sublayer floorplans (2x2 macros + cross/frame filler) ----
-    base_beol = mem_tier_blocks(args.gpu_side, args.mem_side, "HBM_BASE_BEOL", filler)
-    base_si   = mem_tier_blocks(args.gpu_side, args.mem_side, "HBM_BASE_SI", filler)
-    hybond    = mem_tier_blocks(args.gpu_side, args.mem_side, "HYBRID_BOND", filler)
-    nv_beol   = mem_tier_blocks(args.gpu_side, args.mem_side, "NV_DIE_BEOL", filler)
-    nv_si     = mem_tier_blocks(args.gpu_side, args.mem_side, "NV_DIE_SI", filler)
-    dram_beol = mem_tier_blocks(args.gpu_side, args.mem_side, "DRAM_BEOL", filler)
-    dram_si   = mem_tier_blocks(args.gpu_side, args.mem_side, "DRAM_SI", filler)
+    # ---- GPU + interface + package floorplans (die + PKG_MOLD ring) ----
+    passive_layer("bspdn_flp.csv",    "bspdn_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "BSPDN")))
+    passive_layer("beol_mxy_flp.csv", "beol_mxy_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "BEOL_MXY")))
+    passive_layer("oxide_flp.csv",    "oxide_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "OXIDE")))
+    passive_layer("ubump_flp.csv",    "ubump_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "GPU_HBM_UBUMP")))
+    passive_layer("tim_flp.csv",      "tim_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "TIM")))
+    # the copper cold-plate lid spans the whole package
+    passive_layer("lid_flp.csv", "lid_ptrace.csv",
+                  sc.full_package_block(args.gpu_len, args.gpu_wid, m, "LID"))
+
+    # GPU FEOL: structured cluster map, or a uniform single die block
+    if args.power_map == "uniform":
+        feol = ringed(gpu_block(args.gpu_len, args.gpu_wid, "GPU_FEOL"))
+        write_flp("gpu_feol_flp.csv", feol)
+        write_ptrace("gpu_feol_ptrace.csv", [b[0] for b in feol],
+                     {"GPU_FEOL": args.gpu_power})
+    else:
+        tiles, tile_power = sc.cluster_power_tiles(args.gpu_len, args.gpu_wid,
+                                                   args.gpu_power, args.map_p2a,
+                                                   seed=args.map_seed)
+        feol = ringed(tiles)
+        write_flp("gpu_feol_flp.csv", feol)
+        write_ptrace("gpu_feol_ptrace.csv", [b[0] for b in feol], tile_power)
+        avg = args.gpu_power / len(tiles)
+        print(f"  Cluster map: {len(tiles)} tiles of {sc.POWER_TILE*1e3:g} mm, "
+              f"peak {max(tile_power.values()):.3f} W / avg {avg:.3f} W per tile "
+              f"(p2a = {max(tile_power.values())/avg:.2f}, seed {args.map_seed})")
+
+    # ---- memory-stack sublayers (corner stacks + gaps + central Si + ring) ----
+    base_beol = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "HBM_BASE_BEOL"))
+    base_si   = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "HBM_BASE_SI"))
+    hybond    = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "HYBRID_BOND"))
+    nv_beol   = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "NV_DIE_BEOL"))
+    nv_si     = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "NV_DIE_SI"))
+    dram_beol = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "DRAM_BEOL"))
+    dram_si   = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "DRAM_SI"))
     names = [b[0] for b in dram_si]
     write_flp("hbm_base_beol_flp.csv", base_beol)
     write_flp("hbm_base_si_flp.csv",   base_si)
@@ -246,8 +299,12 @@ def main():
     all_dram   = 4 * dram_per_die * total_tiers
     print(f"\n  Layers: {len(layers)} device layers"
           f"  (5 GPU/interface + 2 base die + {3*args.nv_tiers} NVDRAM + {3*args.dram_tiers} DRAM sublayers + TIM + Lid)")
-    print(f"  Filler: cross/frame = {filler}"
-          f"  ({'k=140 high-k escape path (optimized)' if args.optimized else 'k=0.8 mold, no escape path (BASELINE thermal penalty)'})")
+    print(f"  Layout: central {FILLER_CENTER} column; inter-stack gap"
+          f" {gap*1e3:g} mm {FILLER_GAP} (equivalent-k for the paper's 0.1 mm)"
+          if gap else "  Layout: central THERMAL_SI column; stacks merged")
+    print(f"  Ring  : {m*1e3:g} mm {sc.RING_LABEL} package surround, lid spans the package")
+    print(f"  GPU map: {args.power_map}"
+          + (f" (p2a = {args.map_p2a:g}, seed {args.map_seed})" if args.power_map == "cluster" else ""))
     print(f"  Memory standby power (per die):")
     print(f"    DRAM   = {dram_per_die:.2f} W  (leakage {dram_leakage_die:.2f} + refresh {dram_refresh_die:.2f})")
     print(f"    NVDRAM = {nv_per_die:.2f} W  ({args.nv_leakage_factor:g}x DRAM leakage + 0 refresh)  -> < DRAM")

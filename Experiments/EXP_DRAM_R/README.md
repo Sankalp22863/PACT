@@ -11,7 +11,8 @@ the GPU) is adiabatic, so heat is forced **up** through the HBM stacks to the li
 
 Every physical sublayer from the paper's cross-section table is modelled (45
 device layers). GPU/interface/TIM/Lid are full-die; the HBM-stack sublayers use
-the 2×2 macro + thermal-silicon cross/frame layout.
+the paper's Fig. 3(a) layout: four 11×11 mm stacks flush in the corners of the
+30×22 mm die (two per short edge) with an 8 mm central thermal-silicon column.
 
 ```
         ↑ NoPackage HTC 30,000 W/m²K  (on top of the Lid)        [TOP COOLING]
@@ -19,7 +20,7 @@ the 2×2 macro + thermal-silicon cross/frame layout.
   TIM               200 µm, k=9.71
   ┌ 12 × [ DRAM Die Si (50 µm, top 169 µm, k=140)
   │        DRAM Die BEOL (3 µm, k=0.85)
-  │        Hybrid Bonding (2 µm, k=4.8) ]                         (2×2 + thermal-Si)
+  │        Hybrid Bonding (2 µm, k=4.8) ]                         (corner stacks + thermal-Si)
   └ HBM Base Si (50 µm, k=140) + HBM Base BEOL (5 µm, k=1.5)
   GPU–HBM uBump     40 µm, k=19.28
   Oxide              1 µm, k=1.5
@@ -34,7 +35,8 @@ pillar bump, laminate) is **not** modelled — in 3D-on-GPU it is off the heat p
 
 ## Lateral layout — memory on both sides, thermal silicon in the middle
 
-Four HBM stacks in a **2×2** array on the 24 mm GPU die; the cross/frame between
+Four 11×11 mm HBM stacks flush in the **corners** of the 30×22 mm GPU die (two
+per short edge); the 8 mm central column between
 them is high-k **thermal silicon** (k=140), so a vertical cross-section shows
 `HBM | thermal-silicon | HBM`. Inside each stack, the low-k **DRAM Die BEOL
 (0.85)** and **Hybrid Bonding (4.8)** are the dominant vertical resistances (the

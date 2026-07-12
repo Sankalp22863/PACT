@@ -19,20 +19,33 @@ package side, layer 0) -> top (lid / cold-plate side):
     (PACT then applies the NoPackage convective HTC boundary on top of the Lid)
 
 GPU / interface / TIM / Lid are full-die layers; the HBM-stack sublayers use the
-2x2 macro + thermal-silicon cross/frame layout (the paper's vertical heat-escape
-paths). All DRAM-die-Si layers share `dram_tier_flp.csv` so downstream per-tier
-tools still find the 12 tiers; per-layer thickness is set in the LCF.
+paper's Fig. 3(a) die layout: a 30 x 22 mm GPU with the four 11 x 11 mm stacks
+flush in the corners (two per short edge) and an 8 mm-wide thermal-silicon
+column in the centre (the paper's vertical heat-escape path). All DRAM-die-Si
+layers share `dram_tier_flp.csv` so downstream per-tier tools still find the 12
+tiers; per-layer thickness is set in the LCF.
+
+All layers are embedded in a molded package surround (PKG_MOLD ring + extended
+copper lid, see scripts/stack_common.py) so heat can spread laterally beyond the
+die as in the paper's 65x65 mm package.
 
 Usage:
     python generate.py [--gpu-power W] [--hbm-per-stack W] [--tiers N]
-                       [--gpu-side M] [--hbm-side M] [--grid N] [--no-base-die]
+                       [--gpu-len M] [--gpu-wid M] [--hbm-side M] [--no-base-die]
+                       [--pkg-margin M]
 """
 
 import argparse
+import os
+import sys
 
-# ---- defaults (paper-representative) ----
-GPU_SIDE   = 0.024     # m  (24 mm GPU base die)
-HBM_SIDE   = 0.010     # m  (10 mm HBM stack footprint)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+import stack_common as sc  # noqa: E402
+
+# ---- defaults (paper Fig. 3 die layout) ----
+GPU_LEN    = 0.030     # m  (30 mm GPU die, long side = x; 11 + 8 + 11)
+GPU_WID    = 0.022     # m  (22 mm GPU die, short side = y; 11 + 11)
+HBM_SIDE   = 0.011     # m  (11 mm HBM stack footprint)
 GPU_POWER  = 414.0     # W  (nominal 1.0f AI workload)
 HBM_PER_STACK = 40.0   # W  per 12-Hi stack
 TIERS      = 12        # DRAM dies per stack
@@ -55,40 +68,37 @@ T_TIM        = 200e-6
 T_LID        = 3000e-6
 
 
-def gpu_block(gpu_side, label):
+def gpu_block(gpu_len, gpu_wid, label):
     """Single full-die block covering the whole footprint."""
-    return [(f"{label}", 0.0, 0.0, gpu_side, gpu_side, label)]
+    return [(f"{label}", 0.0, 0.0, gpu_len, gpu_wid, label)]
 
 
-def hbm_tier_blocks(gpu_side, hbm_side, macro_label):
-    """4 HBM stacks in 2x2 + thermal-silicon cross/frame filling the rest.
-
-    The four stack footprints carry `macro_label`; the cross/frame is always
-    THERMAL_SI (continuous high-k vertical escape path), so the bottleneck lives
-    only inside the HBM stacks. Returns (name, X, Y, L, W, Label) blocks tiling
-    the die with no gaps/overlaps.
+def hbm_tier_blocks(gpu_len, gpu_wid, hbm_side, macro_label, filler_label="THERMAL_SI"):
+    """Paper Fig. 3(a) layout: 4 HBM stacks flush in the die corners (two per
+    short edge) + a central filler column between them (8 mm thermal silicon in
+    the paper -- the continuous high-k vertical escape path), so the bottleneck
+    lives only inside the HBM stacks. If the die is wider than two stacks, thin
+    filler strips pad the stack columns top/bottom. Returns (name, X, Y, L, W,
+    Label) blocks tiling the die with no gaps/overlaps.
     """
-    g, h = gpu_side, hbm_side
-    gap = g - 2 * h
-    margin = gap / 4.0
-    central = gap / 2.0
-    a0 = margin
-    a1 = margin + h
-    a2 = margin + h + central
-    a3 = margin + h + central + h
-
-    blocks = []
-    blocks.append(("HBM_BL", a0, a0, h, h, macro_label))
-    blocks.append(("HBM_BR", a2, a0, h, h, macro_label))
-    blocks.append(("HBM_TL", a0, a2, h, h, macro_label))
-    blocks.append(("HBM_TR", a2, a2, h, h, macro_label))
-    blocks.append(("Frame_B", 0.0, 0.0, g, margin, "THERMAL_SI"))
-    blocks.append(("Frame_T", 0.0, a3, g, margin, "THERMAL_SI"))
-    blocks.append(("Frame_L", 0.0, margin, margin, g - 2 * margin, "THERMAL_SI"))
-    blocks.append(("Frame_R", a3, margin, margin, g - 2 * margin, "THERMAL_SI"))
-    blocks.append(("Cross_V", a1, margin, central, g - 2 * margin, "THERMAL_SI"))
-    blocks.append(("Cross_HL", a0, a1, h, central, "THERMAL_SI"))
-    blocks.append(("Cross_HR", a2, a1, h, central, "THERMAL_SI"))
+    h = hbm_side
+    central = gpu_len - 2 * h            # central column width (paper: 8 mm)
+    my = (gpu_wid - 2 * h) / 2.0         # top/bottom margin (paper: 0)
+    xr = gpu_len - h                     # right stack-column X
+    blocks = [
+        ("HBM_BL", 0.0, my,     h, h, macro_label),
+        ("HBM_TL", 0.0, my + h, h, h, macro_label),
+        ("HBM_BR", xr,  my,     h, h, macro_label),
+        ("HBM_TR", xr,  my + h, h, h, macro_label),
+        ("Center", h, 0.0, central, gpu_wid, filler_label),
+    ]
+    if my > 1e-9:
+        blocks += [
+            ("Strip_BL", 0.0, 0.0,        h, my, filler_label),
+            ("Strip_TL", 0.0, my + 2 * h, h, my, filler_label),
+            ("Strip_BR", xr,  0.0,        h, my, filler_label),
+            ("Strip_TR", xr,  my + 2 * h, h, my, filler_label),
+        ]
     return blocks
 
 
@@ -126,44 +136,63 @@ def main():
     p.add_argument("--gpu-power", type=float, default=GPU_POWER)
     p.add_argument("--hbm-per-stack", type=float, default=HBM_PER_STACK)
     p.add_argument("--tiers", type=int, default=TIERS)
-    p.add_argument("--gpu-side", type=float, default=GPU_SIDE)
+    p.add_argument("--gpu-len", type=float, default=GPU_LEN,
+                   help="GPU die length (x, along the stack columns), m")
+    p.add_argument("--gpu-wid", type=float, default=GPU_WID,
+                   help="GPU die width (y, the short edges carrying the stacks), m")
     p.add_argument("--hbm-side", type=float, default=HBM_SIDE)
+    p.add_argument("--pkg-margin", type=float, default=sc.PKG_MARGIN,
+                   help="package mold ring width around the die (m); grid in modelParams must cover die+2*margin")
     p.add_argument("--grid", type=int, default=GRID)
     p.add_argument("--no-base-die", action="store_true",
                    help="Remove the HBM base die (the paper's 'base die removal' study)")
     args = p.parse_args()
 
-    if args.hbm_side * 2 >= args.gpu_side:
-        raise SystemExit("Need 2*hbm-side < gpu-side so the 2x2 HBM array fits with margins.")
+    if args.hbm_side * 2 >= args.gpu_len:
+        raise SystemExit("Need 2*hbm-side < gpu-len so a central column separates the stacks.")
+    if args.hbm_side * 2 > args.gpu_wid + 1e-12:
+        raise SystemExit("Need 2*hbm-side <= gpu-wid so two stacks fit along each short edge.")
+    m = args.pkg_margin
+
+    def ringed(blocks):
+        return sc.add_package_ring(blocks, args.gpu_len, args.gpu_wid, m)
+
+    def passive_layer(flp_path, ptrace_path, blocks):
+        write_flp(flp_path, blocks)
+        write_ptrace(ptrace_path, [b[0] for b in blocks], {})
 
     print(f"\nGenerating detailed 3D HBM-on-GPU stack: "
-          f"GPU {args.gpu_side*1e3:g} mm @ {args.gpu_power:g} W, "
+          f"GPU {args.gpu_len*1e3:g} x {args.gpu_wid*1e3:g} mm @ {args.gpu_power:g} W, package "
+          f"{(args.gpu_len+2*m)*1e3:g} x {(args.gpu_wid+2*m)*1e3:g} mm, "
           f"4 HBM stacks @ {args.hbm_per_stack:g} W ({args.tiers}-Hi"
           f"{'' if not args.no_base_die else ', base die removed'}).\n")
 
-    # ---- full-die GPU + interface + package floorplans ----
-    write_flp("bspdn_flp.csv",    gpu_block(args.gpu_side, "BSPDN"))
-    write_flp("gpu_feol_flp.csv", gpu_block(args.gpu_side, "GPU_FEOL"))
-    write_flp("beol_mxy_flp.csv", gpu_block(args.gpu_side, "BEOL_MXY"))
-    write_flp("oxide_flp.csv",    gpu_block(args.gpu_side, "OXIDE"))
-    write_flp("ubump_flp.csv",    gpu_block(args.gpu_side, "GPU_HBM_UBUMP"))
-    write_flp("tim_flp.csv",      gpu_block(args.gpu_side, "TIM"))
-    write_flp("lid_flp.csv",      gpu_block(args.gpu_side, "LID"))
+    # ---- GPU + interface + package floorplans (die + PKG_MOLD ring) ----
+    passive_layer("bspdn_flp.csv",    "bspdn_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "BSPDN")))
+    passive_layer("beol_mxy_flp.csv", "beol_mxy_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "BEOL_MXY")))
+    passive_layer("oxide_flp.csv",    "oxide_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "OXIDE")))
+    passive_layer("ubump_flp.csv",    "ubump_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "GPU_HBM_UBUMP")))
+    passive_layer("tim_flp.csv",      "tim_ptrace.csv",
+                  ringed(gpu_block(args.gpu_len, args.gpu_wid, "TIM")))
+    # the copper cold-plate lid spans the whole package
+    passive_layer("lid_flp.csv", "lid_ptrace.csv",
+                  sc.full_package_block(args.gpu_len, args.gpu_wid, m, "LID"))
 
-    write_ptrace("bspdn_ptrace.csv",    ["BSPDN"], {})
-    write_ptrace("gpu_feol_ptrace.csv", ["GPU_FEOL"], {"GPU_FEOL": args.gpu_power})
-    write_ptrace("beol_mxy_ptrace.csv", ["BEOL_MXY"], {})
-    write_ptrace("oxide_ptrace.csv",    ["OXIDE"], {})
-    write_ptrace("ubump_ptrace.csv",    ["GPU_HBM_UBUMP"], {})
-    write_ptrace("tim_ptrace.csv",      ["TIM"], {})
-    write_ptrace("lid_ptrace.csv",      ["LID"], {})
+    feol = ringed(gpu_block(args.gpu_len, args.gpu_wid, "GPU_FEOL"))
+    write_flp("gpu_feol_flp.csv", feol)
+    write_ptrace("gpu_feol_ptrace.csv", [b[0] for b in feol],
+                 {"GPU_FEOL": args.gpu_power})
 
-    # ---- HBM-stack sublayer floorplans (2x2 macros + thermal-Si cross/frame) ----
-    base_beol = hbm_tier_blocks(args.gpu_side, args.hbm_side, "HBM_BASE_BEOL")
-    base_si   = hbm_tier_blocks(args.gpu_side, args.hbm_side, "HBM_BASE_SI")
-    hybond    = hbm_tier_blocks(args.gpu_side, args.hbm_side, "HYBRID_BOND")
-    dram_beol = hbm_tier_blocks(args.gpu_side, args.hbm_side, "DRAM_BEOL")
-    dram_si   = hbm_tier_blocks(args.gpu_side, args.hbm_side, "DRAM_SI")
+    # ---- HBM-stack sublayer floorplans (corner stacks + central Si + ring) ----
+    base_beol = ringed(hbm_tier_blocks(args.gpu_len, args.gpu_wid, args.hbm_side, "HBM_BASE_BEOL"))
+    base_si   = ringed(hbm_tier_blocks(args.gpu_len, args.gpu_wid, args.hbm_side, "HBM_BASE_SI"))
+    hybond    = ringed(hbm_tier_blocks(args.gpu_len, args.gpu_wid, args.hbm_side, "HYBRID_BOND"))
+    dram_beol = ringed(hbm_tier_blocks(args.gpu_len, args.gpu_wid, args.hbm_side, "DRAM_BEOL"))
+    dram_si   = ringed(hbm_tier_blocks(args.gpu_len, args.gpu_wid, args.hbm_side, "DRAM_SI"))
     names = [b[0] for b in dram_si]
     write_flp("hbm_base_beol_flp.csv", base_beol)
     write_flp("hbm_base_si_flp.csv",   base_si)
@@ -208,8 +237,8 @@ def main():
           f"  + NoPackage HTC boundary on the Lid")
     print(f"  Power : GPU {args.gpu_power:g} W + HBM {total_mem:g} W"
           f" = {args.gpu_power + total_mem:g} W total")
-    print(f"  Grid  : {args.grid}x{args.grid} on {args.gpu_side*1e3:g} mm die"
-          f"  ({args.gpu_side/args.grid*1e3:.3f} mm/cell)")
+    print(f"  Die   : {args.gpu_len*1e3:g} x {args.gpu_wid*1e3:g} mm"
+          f"  (grid rows/cols set in modelParams.config; 0.5 mm cells = paper resolution)")
     print(f"  LCF   : {lcf_path}\n")
 
 

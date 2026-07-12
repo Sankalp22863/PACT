@@ -7,9 +7,13 @@ import numpy as np
 def defineGridProperties(length, height, thickness, properties):
     ro = float(properties['thermalresistivity ((m-k)/w)'])
     sp = float(properties['specificheatcapacity (j/m^3k)'])
+    # Optional anisotropy: 'inplanethermalresistivity ((m-k)/w)' sets the
+    # lateral (x/y) resistivity; the standard entry then applies to the
+    # vertical (z) path only. Falls back to isotropic when absent.
+    ro_ip = float(properties.get('inplanethermalresistivity ((m-k)/w)', ro))
 
-    Rx = ro*length/(height*thickness)
-    Ry = ro*height/(length*thickness)
+    Rx = ro_ip*length/(height*thickness)
+    Ry = ro_ip*height/(length*thickness)
     Rz = ro*thickness/(length*height)
     Conv = 0
     # use this capacitance to validate with COMSOL
@@ -30,8 +34,9 @@ def defineGridPropertiesMatrix(length, height, thickness, properties):
     grid_cols = properties['grid_cols']
     ro = float(properties['thermalresistivity ((m-k)/w)'])
     sp = float(properties['specificheatcapacity (j/m^3k)'])
-    rx = ro*length/(height*thickness)
-    ry = ro*height/(length*thickness)
+    ro_ip = float(properties.get('inplanethermalresistivity ((m-k)/w)', ro))
+    rx = ro_ip*length/(height*thickness)
+    ry = ro_ip*height/(length*thickness)
     rz = ro*thickness/(length*height)
     # cap=1*sp*length*height*thickness
     Rx = np.full((grid_rows, grid_cols), rx)

@@ -14,7 +14,8 @@ through the whole memory stack to the lid.
 
 Mirrors EXP_DRAM_R's detailed stack (45 device layers), but the bottom memory
 tiers are NVDRAM (replacing that many DRAM tiers). GPU/interface/TIM/Lid are
-full-die; memory sublayers use the 2×2 macro + thermal-silicon cross/frame.
+full-die; memory sublayers use the paper's Fig. 3(a) corner layout (four 11×11 mm
+stacks, two per short edge of the 30×22 mm die, 8 mm central thermal-Si column).
 
 ```
         ↑ NoPackage HTC 30,000 W/m²K  (on top of the Lid)        [TOP COOLING]
@@ -29,7 +30,7 @@ full-die; memory sublayers use the 2×2 macro + thermal-silicon cross/frame.
 ```
 
 Default composition: **4 NVDRAM tiers + 8 DRAM tiers** (= 12-Hi). Four memory
-stacks in a 2×2 array with a central thermal-silicon (k=140) escape column, so a
+stacks flush in the die corners with a central thermal-silicon (k=140) escape column, so a
 cross-section shows `memory | thermal-silicon | memory`.
 
 ## Materials (`experiment.config`)

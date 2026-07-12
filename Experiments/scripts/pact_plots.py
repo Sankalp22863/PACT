@@ -64,28 +64,32 @@ FLP_NAMES = {
 }
 
 # material label -> friendly name + colour (for the cross-section / table)
-SURROUND = {"THERMAL_SI", "FILLER"}
+SURROUND = {"THERMAL_SI", "FILLER", "MOLD", "SILICON_CARRIER", "PKG_MOLD"}
 MAT_NAME = {
     "GPU_Si": "GPU substrate (Si)", "GPU_FEOL": "GPU FEOL", "GPU_BEOL": "GPU BEOL",
     "UBUMP": "GPU-mem uBump", "NV_FEOL": "NVDRAM die", "DRAM_Si": "DRAM die",
     "THERMAL_SI": "Thermal silicon", "DAF": "Die-attach film", "FILLER": "Filler",
+    "MOLD": "Mold / underfill", "SILICON_CARRIER": "Silicon carrier",
     # detailed EXP_DRAM_R materials
     "BSPDN": "BSPDN", "BEOL_MXY": "BEOL_MXY", "OXIDE": "Oxide",
     "GPU_HBM_UBUMP": "GPU-HBM uBump", "HBM_BASE_SI": "HBM base die",
     "HBM_BASE_BEOL": "HBM base BEOL", "HYBRID_BOND": "Hybrid bonding",
     "DRAM_BEOL": "DRAM die BEOL", "DRAM_SI": "DRAM die", "TIM": "TIM", "LID": "Lid",
     "NV_DIE_SI": "NVDRAM die", "NV_DIE_BEOL": "NVDRAM die BEOL",
+    "PKG_MOLD": "Package mold ring",
 }
 MAT_COLOR = {
     "GPU_Si": "#9ecae1", "GPU_FEOL": "#fb6a4a", "GPU_BEOL": "#fcbba1",
     "UBUMP": "#dadaeb", "NV_FEOL": "#74c476", "DRAM_Si": "#6baed6",
     "THERMAL_SI": "#3182bd", "DAF": "#fdd0a2", "FILLER": "#d9d9d9",
+    "MOLD": "#d9d9d9", "SILICON_CARRIER": "#3182bd",
     # detailed EXP_DRAM_R materials
     "BSPDN": "#fdae6b", "BEOL_MXY": "#fee391", "OXIDE": "#f0f0f0",
     "GPU_HBM_UBUMP": "#dadaeb", "HBM_BASE_SI": "#9ecae1",
     "HBM_BASE_BEOL": "#fdd0a2", "HYBRID_BOND": "#c7e9c0",
     "DRAM_BEOL": "#fdd0a2", "DRAM_SI": "#6baed6", "TIM": "#fa9fb5", "LID": "#bdbdbd",
     "NV_DIE_SI": "#74c476", "NV_DIE_BEOL": "#c7e9c0",
+    "PKG_MOLD": "#efedf5",
 }
 DEFAULT_COLOR = "#cccccc"
 
@@ -95,14 +99,29 @@ def k2c(v):
     return np.asarray(v, dtype=float) - KELVIN
 
 
+def _grid_shape(prefix, n):
+    """(rows, cols) of a PACT grid with n cells: square when n is a perfect
+    square, else read [Grid] rows/cols from the modelParams.config that sits
+    next to the grid files (rectangular die)."""
+    side = int(round(np.sqrt(n)))
+    if side * side == n:
+        return side, side
+    mp = os.path.join(os.path.dirname(os.path.abspath(prefix)), "modelParams.config")
+    cp = configparser.ConfigParser(interpolation=None, strict=False)
+    cp.read(mp)
+    rows, cols = cp.getint("Grid", "rows"), cp.getint("Grid", "cols")
+    if rows * cols != n:
+        raise SystemExit(f"grid file has {n} cells but {mp} says {rows}x{cols}")
+    return rows, cols
+
+
 def load_grid(prefix, layer_id):
-    """Load one layer grid as a square °C array, or None if missing."""
+    """Load one layer grid as a (rows, cols) °C array, or None if missing."""
     path = f"{prefix}.layer{layer_id}"
     if not os.path.exists(path):
         return None
     data = k2c(np.loadtxt(path))
-    side = int(round(np.sqrt(data.size)))
-    return data.reshape(side, side)
+    return data.reshape(_grid_shape(prefix, data.size))
 
 
 def discover_layers(prefix):
@@ -167,26 +186,41 @@ def layer_materials(flp_path):
 
 
 # ── heatmap overlay geometry ─────────────────────────────────────────────────
-def _mem_extents(side, gpu_side, mem_side):
-    gap = gpu_side - 2 * mem_side
-    margin, central = gap / 4.0, gap / 2.0
-    a = [margin, margin + mem_side, margin + mem_side + central,
-         margin + 2 * mem_side + central]
-    f = [int(round(x / gpu_side * side)) for x in a]
-    return (f[0], f[1]), (f[2], f[3])
+# geom = (gpu_len, gpu_wid, mem_side, pkg_margin): die length (x), width (y),
+# stack side, and the PKG_MOLD ring width around the die (0 = bare die).
+# The temperature grids cover the whole package (die + 2*margin per axis).
+# Paper Fig. 3(a) layout: four mem_side x mem_side stacks flush in the die
+# corners (two per short edge), central filler column between them.
+def _pkg_dims(geom):
+    gpu_len, gpu_wid, mem_side, margin = geom
+    return gpu_len + 2 * margin, gpu_wid + 2 * margin
 
 
-def _draw_mem_boxes(ax, side, gpu_side, mem_side):
-    (lo1, hi1), (lo2, hi2) = _mem_extents(side, gpu_side, mem_side)
-    for (x0, x1) in ((lo1, hi1), (lo2, hi2)):
-        for (y0, y1) in ((lo1, hi1), (lo2, hi2)):
+def _mem_cells(shape, geom):
+    """Cell-index extents of the four corner memory stacks (die-local coords
+    offset by the package margin). Returns (x_ranges, y_ranges)."""
+    rows, cols = shape
+    gpu_len, gpu_wid, mem_side, margin = geom
+    pkg_len, pkg_wid = _pkg_dims(geom)
+    cx = lambda v: int(round((margin + v) / pkg_len * cols))
+    cy = lambda v: int(round((margin + v) / pkg_wid * rows))
+    my = (gpu_wid - 2 * mem_side) / 2.0
+    x_ranges = ((cx(0.0), cx(mem_side)), (cx(gpu_len - mem_side), cx(gpu_len)))
+    y_ranges = ((cy(my), cy(my + mem_side)), (cy(my + mem_side), cy(my + 2 * mem_side)))
+    return x_ranges, y_ranges
+
+
+def _draw_mem_boxes(ax, shape, geom):
+    x_ranges, y_ranges = _mem_cells(shape, geom)
+    for (x0, x1) in x_ranges:
+        for (y0, y1) in y_ranges:
             ax.add_patch(plt.Rectangle((x0 - 0.5, y0 - 0.5), x1 - x0, y1 - y0,
                                        fill=False, edgecolor="cyan", lw=1.0, ls="--"))
 
 
-def under_stack_range(g, gpu_side, mem_side):
-    """(min, max) temperature over the die area UNDER the 2×2 memory stacks,
-    excluding the cross/frame 'surround' cells.
+def under_stack_range(g, geom):
+    """(min, max) temperature over the die area UNDER the four corner memory
+    stacks, excluding the central-filler 'surround' cells.
 
     In the mold-filled baseline (EXP_*_B) that surround is a near-insulating
     column that traps GPU heat and cooks to a few-hundred °C — an artefact of the
@@ -194,10 +228,10 @@ def under_stack_range(g, gpu_side, mem_side):
     stack is where heat actually escapes, so that peak is the meaningful GPU-
     substrate temperature (and, for a memory tier, the real die temperature).
     """
-    (lo1, hi1), (lo2, hi2) = _mem_extents(g.shape[0], gpu_side, mem_side)
+    x_ranges, y_ranges = _mem_cells(g.shape, geom)
     m = np.zeros(g.shape, dtype=bool)
-    for (x0, x1) in ((lo1, hi1), (lo2, hi2)):
-        for (y0, y1) in ((lo1, hi1), (lo2, hi2)):
+    for (x0, x1) in x_ranges:
+        for (y0, y1) in y_ranges:
             m[y0:y1, x0:x1] = True
     if not m.any():
         return float(np.nanmin(g)), float(np.nanmax(g))
@@ -205,15 +239,15 @@ def under_stack_range(g, gpu_side, mem_side):
     return float(vals.min()), float(vals.max())
 
 
-def _layer_range(g, gpu_side, mem_side, mask_surround):
+def _layer_range(g, geom, mask_surround):
     """(vmin, vmax) for one layer: under-stack range when masking, else full grid."""
     if mask_surround:
-        return under_stack_range(g, gpu_side, mem_side)
+        return under_stack_range(g, geom)
     return float(g.min()), float(g.max())
 
 
 # ── plots ────────────────────────────────────────────────────────────────────
-def heatmaps(prefix, lcf, out, gpu_side, mem_side, include_package=False,
+def heatmaps(prefix, lcf, out, geom, include_package=False,
              mask_surround=False):
     all_ids = discover_layers(prefix)
     if not all_ids:
@@ -223,7 +257,7 @@ def heatmaps(prefix, lcf, out, gpu_side, mem_side, include_package=False,
     ids = all_ids if include_package else [i for i in all_ids if i < n_device]
     grids = {i: load_grid(prefix, i) for i in ids}
     grids = {i: g for i, g in grids.items() if g is not None}
-    ranges = {i: _layer_range(g, gpu_side, mem_side, mask_surround)
+    ranges = {i: _layer_range(g, geom, mask_surround)
               for i, g in grids.items()}
     vmin = min(r[0] for r in ranges.values())
     vmax = max(r[1] for r in ranges.values())
@@ -236,7 +270,7 @@ def heatmaps(prefix, lcf, out, gpu_side, mem_side, include_package=False,
     for ax, lid in zip(axes.flat, ids):
         g = grids[lid]
         im = ax.imshow(g, origin="lower", cmap=CMAP, vmin=vmin, vmax=vmax, aspect="equal")
-        _draw_mem_boxes(ax, g.shape[0], gpu_side, mem_side)
+        _draw_mem_boxes(ax, g.shape, geom)
         peak = ranges[lid][1]
         ax.set_title(f"L{lid}: {labels.get(lid, '?')}\nmax {peak:.1f} °C", fontsize=9)
         ax.set_xticks([]); ax.set_yticks([])
@@ -251,8 +285,8 @@ def heatmaps(prefix, lcf, out, gpu_side, mem_side, include_package=False,
     print(f"    Written: {out}")
 
 
-def surface_plane(prefix, out, gpu_side, lcf=None, layer_id=None,
-                  mem_side=0.010, mask_surround=False):
+def surface_plane(prefix, out, geom, lcf=None, layer_id=None,
+                  mask_surround=False):
     """Lowest layer as a tilted flat color plane (color = temperature, no height)."""
     from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
     ids = discover_layers(prefix)
@@ -261,12 +295,12 @@ def surface_plane(prefix, out, gpu_side, lcf=None, layer_id=None,
     lid = layer_id if layer_id is not None else min(ids)
     label = layer_labels(lcf, max(ids)).get(lid, f"layer {lid}") if lcf else f"layer {lid}"
     g = load_grid(prefix, lid)
-    side = g.shape[0]
-    ext = gpu_side * 1e3
-    xs = np.linspace(0, ext, side); ys = np.linspace(0, ext, side)
+    rows, cols = g.shape
+    pkg_len, pkg_wid = _pkg_dims(geom)
+    xs = np.linspace(0, pkg_len * 1e3, cols); ys = np.linspace(0, pkg_wid * 1e3, rows)
     X, Y = np.meshgrid(xs, ys)
     cmap = plt.get_cmap(SURFACE_CMAP)
-    vmn, vmx = _layer_range(g, gpu_side, mem_side, mask_surround)
+    vmn, vmx = _layer_range(g, geom, mask_surround)
     norm = Normalize(vmin=vmn, vmax=vmx, clip=mask_surround)
     fig = plt.figure(figsize=(7, 6))
     ax = fig.add_subplot(111, projection="3d")
@@ -274,7 +308,7 @@ def surface_plane(prefix, out, gpu_side, lcf=None, layer_id=None,
                     linewidth=0, antialiased=True, rstride=1, cstride=1)
     ax.view_init(elev=35, azim=-60)
     ax.set_xlabel("x (mm)"); ax.set_ylabel("y (mm)"); ax.set_zticks([])
-    ax.set_box_aspect((1, 1, 0.05))
+    ax.set_box_aspect((1, pkg_wid / pkg_len, 0.05))
     ax.set_title(f"Layer {lid}: {label} — 2D temperature map")
     peak_note = "\n(under stacks; mold gap off-scale)" if mask_surround else ""
     ax.text2D(0.02, 0.95, f"Peak: {vmx:.1f} °C{peak_note}", transform=ax.transAxes,
@@ -286,37 +320,38 @@ def surface_plane(prefix, out, gpu_side, lcf=None, layer_id=None,
     print(f"    Written: {out}")
 
 
-def _flat_plane(ax, g, gpu_side, title, peak_color="#b30000",
-                mem_side=0.010, mask_surround=False):
+def _flat_plane(ax, g, geom, title, peak_color="#b30000",
+                mask_surround=False):
     """Render one layer as a tilted flat color plane (paper-style); returns the
     ScalarMappable so the caller can attach a per-panel colorbar."""
-    side = g.shape[0]
-    ext = gpu_side * 1e3                      # mm
-    xs = np.linspace(0, ext, side); ys = np.linspace(0, ext, side)
+    rows, cols = g.shape
+    pkg_len, pkg_wid = _pkg_dims(geom)
+    len_mm, wid_mm = pkg_len * 1e3, pkg_wid * 1e3
+    xs = np.linspace(0, len_mm, cols); ys = np.linspace(0, wid_mm, rows)
     X, Y = np.meshgrid(xs, ys)
     cmap = plt.get_cmap(SURFACE_CMAP)
-    vmn, vmx = _layer_range(g, gpu_side, mem_side, mask_surround)
+    vmn, vmx = _layer_range(g, geom, mask_surround)
     norm = Normalize(vmin=vmn, vmax=vmx, clip=mask_surround)
     ax.plot_surface(X, Y, np.zeros_like(g), facecolors=cmap(norm(g)), shade=False,
                     linewidth=0, antialiased=True, rstride=1, cstride=1)
     ax.view_init(elev=35, azim=-60)
     ax.set_xlabel("x (mm)"); ax.set_ylabel("y (mm)"); ax.set_zticks([])
-    ax.set_box_aspect((1, 1, 0.05))
+    ax.set_box_aspect((1, pkg_wid / pkg_len, 0.05))
     ax.set_title(title, fontsize=12, pad=0)
     peak_note = "  (under stacks)" if mask_surround else ""
     ax.text2D(0.5, -0.02, f"Peak Temperature{peak_note}\n{vmx:.1f} °C", transform=ax.transAxes,
               ha="center", va="top", fontsize=12, fontweight="bold", color=peak_color,
               bbox=dict(boxstyle="round", fc="white", ec=peak_color, alpha=0.9))
-    ax.text2D(0.5, 0.0, f"← {ext:g} mm →", transform=ax.transAxes,
+    ax.text2D(0.5, 0.0, f"← {len_mm:g} × {wid_mm:g} mm →", transform=ax.transAxes,
               ha="center", va="bottom", fontsize=8, color="#444444")
     m = plt.cm.ScalarMappable(norm=norm, cmap=cmap); m.set_array(g)
     return m
 
 
-def side_by_side(prefix, out, gpu_side, lcf=None,
+def side_by_side(prefix, out, geom, lcf=None,
                  left=(1, "GPU substrate (compute die)"),
                  right=(9, "Lowest NVDRAM tier"),
-                 mem_side=0.010, mask_surround=False):
+                 mask_surround=False):
     """Paper-style two-panel figure: two layers shown as tilted flat color planes,
     each with its own jet colour scale and a peak-temperature callout."""
     from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
@@ -329,8 +364,8 @@ def side_by_side(prefix, out, gpu_side, lcf=None,
         if g is None:
             raise SystemExit(f"side_by_side: missing grid for layer {lid}.")
         ax = fig.add_subplot(1, 2, pos, projection="3d")
-        m = _flat_plane(ax, g, gpu_side, f"L{lid}: {label}",
-                        mem_side=mem_side, mask_surround=mask_surround)
+        m = _flat_plane(ax, g, geom, f"L{lid}: {label}",
+                        mask_surround=mask_surround)
         fig.colorbar(m, ax=ax, label="Temperature (°C)", fraction=0.03, pad=0.10, shrink=0.6)
     fig.suptitle("3D-stacked GPU + NVDRAM — steady-state temperature\n"
                  "(independent colour scales, as in the IEDM figure)", fontsize=13)
@@ -456,14 +491,14 @@ def future_integration(lcf, flp_dir, out):
 
 
 def _stack_profile(exp_dir, prefix, lcf, flp_regions,
-                   gpu_side=0.024, mem_side=0.010, mask_surround=False):
+                   geom=(0.030, 0.022, 0.011, 0.006), mask_surround=False):
     out = []
     for layer_id, flp, _ in read_lcf(os.path.join(exp_dir, lcf)):
         if flp in flp_regions:
             g = load_grid(os.path.join(exp_dir, prefix), layer_id)
             if g is None:
                 raise SystemExit(f"Missing grid for layer {layer_id} in {exp_dir}.")
-            peak = (under_stack_range(g, gpu_side, mem_side)[1] if mask_surround
+            peak = (under_stack_range(g, geom)[1] if mask_surround
                     else g.max())
             out.append((flp_regions[flp], peak))
     return out
@@ -471,13 +506,13 @@ def _stack_profile(exp_dir, prefix, lcf, flp_regions,
 
 def peak_per_tier(hybrid_dir, hybrid_prefix, hybrid_lcf,
                   dram_dir, dram_prefix, dram_lcf, out,
-                  gpu_side=0.024, mem_side=0.010, mask_surround=False):
+                  geom=(0.030, 0.022, 0.011, 0.006), mask_surround=False):
     """Peak temperature up the stack: NVDRAM+DRAM hybrid (continuous) vs pure DRAM."""
     hybrid = _stack_profile(hybrid_dir, hybrid_prefix, hybrid_lcf,
                             {"nv_tier_flp.csv": "NVDRAM", "dram_tier_flp.csv": "DRAM"},
-                            gpu_side, mem_side, mask_surround)
+                            geom, mask_surround)
     pure = _stack_profile(dram_dir, dram_prefix, dram_lcf, {"dram_tier_flp.csv": "DRAM"},
-                          gpu_side, mem_side, mask_surround)
+                          geom, mask_surround)
     if not hybrid or not pure:
         raise SystemExit("peak_per_tier: missing tier data (run both experiments first).")
     regions = [r for r, _ in hybrid]
@@ -518,26 +553,29 @@ def make_plots(exp_dir, meta, out_dir):
     prefix = os.path.join(exp_dir, meta["grid_prefix"])
     lcf = os.path.join(exp_dir, meta["lcf"])
     config = os.path.join(exp_dir, meta["config"])
-    gpu_side = float(meta.get("gpu_side", 0.024))
-    mem_side = float(meta.get("mem_side", 0.010))
+    gpu_len = float(meta.get("gpu_len", meta.get("gpu_side", 0.030)))
+    gpu_wid = float(meta.get("gpu_wid", gpu_len))
+    mem_side = float(meta.get("mem_side", 0.011))
+    pkg_margin = float(meta.get("pkg_margin", 0.0))
+    geom = (gpu_len, gpu_wid, mem_side, pkg_margin)
     # Baseline (mold-surround) experiments set mask_surround=true so every peak is
     # read UNDER the stacks, ignoring the unphysical mold-gap hotspot.
     mask = bool(meta.get("mask_surround", False))
-    _report_substrate_peak(prefix, lcf, gpu_side, mem_side, mask)
+    _report_substrate_peak(prefix, lcf, geom, mask)
     for plot in meta.get("plots", []):
         if plot == "heatmaps":
-            heatmaps(prefix, lcf, os.path.join(out_dir, "heatmaps.png"), gpu_side, mem_side,
+            heatmaps(prefix, lcf, os.path.join(out_dir, "heatmaps.png"), geom,
                      mask_surround=mask)
         elif plot == "surface":
-            surface_plane(prefix, os.path.join(out_dir, "lowest_layer_surface.png"), gpu_side, lcf,
-                          mem_side=mem_side, mask_surround=mask)
+            surface_plane(prefix, os.path.join(out_dir, "lowest_layer_surface.png"), geom, lcf,
+                          mask_surround=mask)
         elif plot == "side_by_side":
             sb = meta.get("side_by_side", {})
             left = tuple(sb.get("left", [1, "GPU substrate (compute die)"]))
             right = tuple(sb.get("right", [9, "Lowest NVDRAM tier"]))
             side_by_side(prefix, os.path.join(out_dir, "gpu_vs_nvdram_side_by_side.png"),
-                         gpu_side, lcf, left=left, right=right,
-                         mem_side=mem_side, mask_surround=mask)
+                         geom, lcf, left=left, right=right,
+                         mask_surround=mask)
         elif plot == "cross_section":
             cross_section(lcf, config, exp_dir, os.path.join(out_dir, "cross_section.png"))
         elif plot == "table":
@@ -550,12 +588,12 @@ def make_plots(exp_dir, meta, out_dir):
             peak_per_tier(exp_dir, meta["grid_prefix"], meta["lcf"],
                           dram_dir, cmp["grid_prefix"], cmp["lcf"],
                           os.path.join(out_dir, "peak_per_tier_hybrid_vs_dram.png"),
-                          gpu_side, mem_side, mask)
+                          geom, mask)
         else:
             print(f"    (skipping unknown plot '{plot}')")
 
 
-def _report_substrate_peak(prefix, lcf, gpu_side, mem_side, mask_surround):
+def _report_substrate_peak(prefix, lcf, geom, mask_surround):
     """Print the peak GPU-substrate (FEOL) temperature — under the stacks when
     mask_surround, so the mold-gap artefact is excluded."""
     if not os.path.exists(lcf):
@@ -566,7 +604,7 @@ def _report_substrate_peak(prefix, lcf, gpu_side, mem_side, mask_surround):
             if g is None:
                 return
             if mask_surround:
-                _, hi = under_stack_range(g, gpu_side, mem_side)
+                _, hi = under_stack_range(g, geom)
                 print(f"    GPU substrate peak (L{lid}): {hi:.1f} °C  "
                       f"(under stacks; excludes mold-gap artefact, raw grid max {g.max():.1f} °C)")
             else:
