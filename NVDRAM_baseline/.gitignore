@@ -1,0 +1,3 @@
+# Per-stage generated PACT inputs (flp/ptrace/lcf), grid outputs, and logs.
+# Regenerate with:  python3 run_waterfall.py --nv-tiers 0 --dram-tiers 12  (then plot_waterfall.py)
+[0-9]_*/

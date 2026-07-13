@@ -1,0 +1,6 @@
+[0_baseline    ] Baseline (3D stacking)             peak GPU (under-stack) =  135.08 C   (start; raw grid 117.0..230.2 C)
+[1_base_removal] + HBM base-die removal             peak GPU (under-stack) =  131.16 C   (drop +3.92 C; raw grid 113.8..221.8 C)
+[2_merge       ] + HBM stack merging                peak GPU (under-stack) =  130.47 C   (drop +0.69 C; raw grid 71.5..221.4 C)
+[3_thin_top    ] + Top-die thinning                 peak GPU (under-stack) =  126.46 C   (drop +4.01 C; raw grid 70.8..203.5 C)
+[4_freq_0p7    ] + 0.7x GPU frequency               peak GPU (under-stack) =   99.11 C   (drop +27.35 C; raw grid 58.0..150.6 C)
+[5_thermal_si  ] + Thermal-silicon optimization     peak GPU (under-stack) =   85.47 C   (drop +13.64 C; raw grid 57.7..85.5 C)
