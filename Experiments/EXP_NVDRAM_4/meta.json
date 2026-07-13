@@ -1,7 +1,7 @@
 {
   "name": "EXP_NVDRAM_4",
   "title": "4 NVDRAM + 8 DRAM tiers on a 3D-stacked compute die \u2014 paper-baseline conditions (unmerged stacks, hotspot power map)",
-  "generate": "python3 generate.py --nv-tiers 4 --dram-tiers 8",
+  "generate": "python3 generate.py --nv-tiers 4 --dram-tiers 8 --gpu-power 355.4925",
   "lcf": "hybrid_lcf.csv",
   "config": "experiment.config",
   "modelparams": "modelParams.config",
