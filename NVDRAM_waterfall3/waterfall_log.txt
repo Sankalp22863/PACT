@@ -1,0 +1,6 @@
+[0_baseline    ] Baseline (3D stacking)             GPU  137.74 C | bottom-DRAM(L22)  100.26 C
+[1_base_removal] + HBM base-die removal             GPU  134.40 C | bottom-DRAM(L20)  100.36 C   (GPU -3.34)
+[2_merge       ] + HBM stack merging                GPU  117.36 C | bottom-DRAM(L20)   93.06 C   (GPU -17.04)
+[3_thin_top    ] + Top-die thinning                 GPU  115.68 C | bottom-DRAM(L20)   91.88 C   (GPU -1.68)
+[4_freq_0p7    ] + 0.7x GPU frequency               GPU   92.93 C | bottom-DRAM(L20)   75.97 C   (GPU -22.75)
+[5_thermal_si  ] + Thermal-silicon optimization     GPU   80.77 C | bottom-DRAM(L20)   71.08 C   (GPU -12.16)
