@@ -38,7 +38,7 @@ PEAK_C = "#b30000"                              # reference peak-callout red
 
 # jet, deepened so the colours read richer (not washed out); used for BOTH the
 # plane facecolors and the colorbar so they stay consistent.
-DARKEN = 0.85                                   # multiply colormap RGB to deepen
+DARKEN = 0.72                                   # multiply colormap RGB to deepen
 _jc = plt.get_cmap("jet")(np.linspace(0, 1, 256))
 _jc[:, :3] *= DARKEN
 CMAP = ListedColormap(_jc)                      # blue (coolest) -> red (hottest), deepened
