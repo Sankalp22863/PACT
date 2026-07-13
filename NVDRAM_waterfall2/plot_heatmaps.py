@@ -60,9 +60,7 @@ def main():
     draw(axes[1], nvd,  f"Lowest NVDRAM tier (layer {nv})")
     draw(axes[2], dram, f"Lowest DRAM tier (layer {bd})")
 
-    fig.suptitle("Steady-state layer temperatures after thermal-silicon optimization "
-                 "(φ-HBM: 4 NVDRAM + 8 DRAM, 30 × 22 mm; dashed = memory-stack footprints)", fontsize=13)
-    fig.tight_layout(rect=[0, 0, 1, 0.94])
+    fig.tight_layout(rect=[0, 0, 1, 1.0])
     for ext in ("png", "pdf"):
         out = os.path.join(HERE, f"heatmaps_thermal_si.{ext}")
         fig.savefig(out, dpi=200, bbox_inches="tight")

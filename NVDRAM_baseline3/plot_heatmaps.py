@@ -63,9 +63,7 @@ def main():
                  ha="center", va="center", fontsize=13, color="#8a8a8a",
                  bbox=dict(boxstyle="round,pad=0.8", fc="#f4f4f4", ec="#c0c0c0"))
 
-    fig.suptitle("Steady-state layer temperatures after thermal-silicon optimization "
-                 "(all-DRAM, 30 × 22 mm, active R/W; dashed = memory-stack footprints)", fontsize=13)
-    fig.tight_layout(rect=[0, 0, 1, 0.94])
+    fig.tight_layout(rect=[0, 0, 1, 1.0])
     for ext in ("png", "pdf"):
         out = os.path.join(HERE, f"heatmaps_thermal_si.{ext}")
         fig.savefig(out, dpi=200, bbox_inches="tight")

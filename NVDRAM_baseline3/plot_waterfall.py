@@ -87,11 +87,6 @@ def main():
         lbl.set_color(INK)
     ax.legend(loc="upper right", frameon=True, fontsize=11, framealpha=0.95)
 
-    ax.set_title("All-DRAM STCO Thermal Waterfall — 30 × 22 mm die, active read/write\n"
-                 "GPU compute-die peak + bottom-most DRAM tier; memory +active R/W "
-                 "(α$_w$=0.24, 4.4 TB/s/stack, 70 fJ/bit)",
-                 fontsize=12.5, color=INK, pad=16)
-
     fig.tight_layout()
     for ext in ("png", "pdf"):
         out = os.path.join(HERE, f"waterfall.{ext}")

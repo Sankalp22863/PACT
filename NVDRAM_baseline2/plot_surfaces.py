@@ -92,10 +92,7 @@ def main():
         ax = fig.add_subplot(1, n, pos, projection="3d")
         panel(fig, ax, load(lid), f"{label} — L{lid}")
 
-    kind = ("φ-HBM: 4 NVDRAM + 8 DRAM" if nv is not None else "all-DRAM")
-    fig.suptitle(f"Steady-state layer temperatures after thermal-silicon optimization "
-                 f"({kind}, {GPU_X:g} × {GPU_Y:g} mm)", fontsize=13)
-    fig.tight_layout(rect=[0, 0.02, 1, 0.95])
+    fig.tight_layout(rect=[0, 0.02, 1, 1.0])
     for ext in ("png", "pdf"):
         out = os.path.join(HERE, f"surfaces_thermal_si.{ext}")
         fig.savefig(out, dpi=200, bbox_inches="tight")
