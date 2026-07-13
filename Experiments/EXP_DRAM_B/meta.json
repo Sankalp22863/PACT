@@ -1,7 +1,7 @@
 {
   "name": "EXP_DRAM_B",
   "title": "DRAM (HBM) on a 3D compute die \u2014 paper BASELINE (unmerged stacks, hotspot power map)",
-  "generate": "python3 generate.py",
+  "generate": "python3 generate.py --gpu-power 355.4925",
   "lcf": "dram3d_3d_lcf.csv",
   "config": "experiment.config",
   "modelparams": "modelParams.config",

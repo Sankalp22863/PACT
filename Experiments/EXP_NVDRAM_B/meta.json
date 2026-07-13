@@ -1,7 +1,7 @@
 {
   "name": "EXP_NVDRAM_B",
   "title": "Hybrid NVDRAM-bottom / DRAM-top on a 3D compute die \u2014 paper BASELINE (unmerged stacks, hotspot power map)",
-  "generate": "python3 generate.py",
+  "generate": "python3 generate.py --nv-access-fj 90 --bw-util 0 --gpu-power 355.4925",
   "lcf": "hybrid_lcf.csv",
   "config": "experiment.config",
   "modelparams": "modelParams.config",

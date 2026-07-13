@@ -1,7 +1,7 @@
 {
   "name": "EXP_NVDRAM_12",
   "title": "12 NVDRAM tiers (all-NVDRAM stack) on a 3D-stacked compute die \u2014 paper-baseline conditions (unmerged stacks, hotspot power map)",
-  "generate": "python3 generate.py --nv-tiers 12 --dram-tiers 0 --nv-access-fj 90 --bw-util 0.24",
+  "generate": "python3 generate.py --nv-tiers 12 --dram-tiers 0 --nv-access-fj 90 --bw-util 0 --gpu-power 355.4925",
   "lcf": "hybrid_lcf.csv",
   "config": "experiment.config",
   "modelparams": "modelParams.config",

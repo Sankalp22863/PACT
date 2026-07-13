@@ -1,7 +1,7 @@
 {
   "name": "EXP_DRAM_R",
   "title": "DRAM (HBM) on a 3D-stacked compute die \u2014 paper reproduction",
-  "generate": "python3 generate.py",
+  "generate": "python3 generate.py --gpu-power 355.4925",
   "lcf": "dram3d_3d_lcf.csv",
   "config": "experiment.config",
   "modelparams": "modelParams.config",
