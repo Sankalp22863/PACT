@@ -490,6 +490,56 @@ def future_integration(lcf, flp_dir, out):
     print(f"    Written: {out}")
 
 
+def layer_profile(prefix, lcf, out, geom, mask_surround=False):
+    """Layerwise temperature through the whole stack (bottom -> lid): per-layer
+    peak / mean / min with the min-max band, DRAM/NVDRAM die layers marked."""
+    ids = discover_layers(prefix)
+    if not ids:
+        raise SystemExit(f"No '{prefix}.layer*' files. Run PACT first.")
+    labels = layer_labels(lcf, max(ids))
+    die_layers = {}
+    if lcf and os.path.exists(lcf):
+        n = 0
+        for lid, flp, _ in read_lcf(lcf):
+            if flp in ("dram_tier_flp.csv", "nv_tier_flp.csv"):
+                n += 1
+                die_layers[lid] = ("NVDRAM" if "nv_" in flp else "DRAM", n)
+    xs, pk, mn, av = [], [], [], []
+    for lid in ids:
+        g = load_grid(prefix, lid)
+        if g is None:
+            continue
+        lo, hi = _layer_range(g, geom, mask_surround)
+        xs.append(lid); pk.append(hi); mn.append(float(g.min())); av.append(float(g.mean()))
+    fig, ax = plt.subplots(figsize=(11, 5.2))
+    ax.fill_between(xs, mn, pk, color="#9ecae1", alpha=0.35, label="min–max across layer")
+    ax.plot(xs, pk, "-", color="#b30000", lw=2.0, label="layer peak")
+    ax.plot(xs, av, "--", color="#555555", lw=1.3, label="layer mean")
+    d_x = [x for x in xs if x in die_layers]
+    ax.plot(d_x, [pk[xs.index(x)] for x in d_x], "s", ms=5, color="#e6862e",
+            zorder=3, label="memory die layers")
+    ax.annotate(f"GPU FEOL  {pk[xs.index(1)]:.1f} °C", (1, pk[xs.index(1)]),
+                textcoords="offset points", xytext=(8, 8), fontsize=9,
+                fontweight="bold", color="#b30000")
+    ticks, tick_labels = [], []
+    for lid in xs:
+        if lid in die_layers:
+            ticks.append(lid); tick_labels.append(f"{die_layers[lid][0][0]}{die_layers[lid][1]}")
+        elif labels.get(lid) in ("BSPDN", "GPU FEOL (heat source)", "HBM base die",
+                                 "TIM", "Lid", "Cooling lid (NoPackage)"):
+            ticks.append(lid)
+            tick_labels.append({"GPU FEOL (heat source)": "FEOL",
+                                "HBM base die": "Base",
+                                "Cooling lid (NoPackage)": "HTC"}.get(labels[lid], labels[lid]))
+    ax.set_xticks(ticks); ax.set_xticklabels(tick_labels, rotation=60, fontsize=8)
+    ax.set_xlabel("Layer (bottom = adiabatic package side  →  top = cold plate)")
+    ax.set_ylabel("Temperature (°C)")
+    ax.set_title("Layerwise steady-state temperature through the stack")
+    ax.grid(True, ls=":", alpha=0.5); ax.legend(fontsize=9)
+    fig.savefig(out); plt.close(fig)
+    print(f"    Written: {out}")
+
+
 def _stack_profile(exp_dir, prefix, lcf, flp_regions,
                    geom=(0.030, 0.022, 0.011, 0.006), mask_surround=False):
     out = []
@@ -576,6 +626,9 @@ def make_plots(exp_dir, meta, out_dir):
             side_by_side(prefix, os.path.join(out_dir, "gpu_vs_nvdram_side_by_side.png"),
                          geom, lcf, left=left, right=right,
                          mask_surround=mask)
+        elif plot == "layer_profile":
+            layer_profile(prefix, lcf, os.path.join(out_dir, "layerwise_temperature.png"),
+                          geom, mask_surround=mask)
         elif plot == "cross_section":
             cross_section(lcf, config, exp_dir, os.path.join(out_dir, "cross_section.png"))
         elif plot == "table":

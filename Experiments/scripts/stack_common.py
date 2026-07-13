@@ -28,6 +28,24 @@ import numpy as np
 PKG_MARGIN = 0.006      # m — mold ring width around the die
 RING_LABEL = "PKG_MOLD"
 
+# ---- NVDRAM core-array access energy (user device numbers) ----
+NV_ACCESS_FJ = 90.0     # fJ/bit of activated row; read (sense+restore) == write
+                        # (destructive read; restore folds into precharge).
+                        # Device range: 50-200 fJ/bit.
+STACK_BW_TBS = 4.9      # TB/s per stack: HBM3E-class ~1.2 TB/s x the paper's
+                        # anticipated 4x bandwidth from 3D stacking
+BW_UTIL      = 1.0      # sustained fraction of peak bandwidth
+
+
+def nv_access_power_per_die(fj_per_bit=NV_ACCESS_FJ, stack_bw_tbs=STACK_BW_TBS,
+                            util=BW_UTIL, tiers=12):
+    """Core-array access power per NVDRAM die (W): E_bit x per-die bandwidth.
+    Traffic is assumed capacity-interleaved, so each die serves BW/tiers.
+    Read == write == fj_per_bit, so the read/write mix drops out."""
+    bits_per_s = stack_bw_tbs * 1e12 * 8.0 * util
+    return fj_per_bit * 1e-15 * bits_per_s / tiers
+
+
 POWER_TILE = 0.0005     # m — power-map tiles at the paper's 0.5 mm resolution
 CLUSTER_X = 0.0025      # m — compute-cluster pitch in x
 CLUSTER_Y = 0.0022      # m — compute-cluster pitch in y

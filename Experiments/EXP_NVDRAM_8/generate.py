@@ -33,10 +33,13 @@ Stack, bottom (adiabatic package side) -> top (lid):
       -> TIM -> Lid
     (PACT applies the NoPackage convective HTC boundary on top of the Lid)
 
-Memory power = standby only (REPLACEMENT semantics): the memory is a fixed
-(nv_tiers + dram_tiers)-Hi stack carrying the paper's dram_per_stack budget, so
-each DRAM die = dram_per_stack / total_tiers. NVDRAM dies replace that many DRAM
-dies, each dissipating  nv_leakage_factor * (DRAM leakage)  + 0 refresh.
+Memory power (REPLACEMENT semantics): the memory is a fixed
+(nv_tiers + dram_tiers)-Hi stack. Each DRAM die carries the paper's workload
+budget share (dram_per_stack / total_tiers; DRAM access energy is implicit in
+it). NVDRAM dies replace that many DRAM dies, each dissipating
+  nv_leakage_factor * (DRAM leakage)  +  0 refresh
+  +  explicit core-array access power = nv_access_fj x (stack_bw / total_tiers)
+(device numbers: read == write ~90 fJ/bit, destructive read; range 50-200).
 
 Usage:
     python generate.py [--nv-tiers N] [--dram-tiers N] [--gpu-power W]
@@ -161,6 +164,12 @@ def main():
                    help="fraction of DRAM standby power spent on refresh (NVDRAM has none)")
     p.add_argument("--nv-leakage-factor", type=float, default=NV_LEAKAGE_FACTOR,
                    help="NVDRAM leakage as a fraction of DRAM leakage (refresh = 0)")
+    p.add_argument("--nv-access-fj", type=float, default=sc.NV_ACCESS_FJ,
+                   help="NVDRAM core-array access energy, fJ/bit (read == write; device range 50-200)")
+    p.add_argument("--stack-bw", type=float, default=sc.STACK_BW_TBS,
+                   help="memory bandwidth per stack, TB/s (default = paper's 4x HBM3E from 3D)")
+    p.add_argument("--bw-util", type=float, default=sc.BW_UTIL,
+                   help="sustained fraction of peak bandwidth")
     p.add_argument("--gpu-len", type=float, default=GPU_LEN,
                    help="GPU die length (x, along the stack columns), m")
     p.add_argument("--gpu-wid", type=float, default=GPU_WID,
@@ -252,14 +261,19 @@ def main():
     write_flp("dram_die_beol_flp.csv", dram_beol)
     write_flp("dram_tier_flp.csv",     dram_si)   # DRAM Die Si (the DRAM "tier")
 
-    # Standby-power decomposition (background only), REPLACEMENT semantics:
-    #   DRAM die  = leakage + refresh                       (= dram_per_stack/total_tiers)
-    #   NVDRAM die= nv_leakage_factor * leakage  +  0 refresh
+    # Power decomposition, REPLACEMENT semantics:
+    #   DRAM die  = leakage + refresh  (= dram_per_stack/total_tiers; the paper's
+    #               workload budget, so DRAM access energy is implicit in it)
+    #   NVDRAM die= nv_leakage_factor * (DRAM leakage) + 0 refresh
+    #               + explicit core-array access power (device numbers:
+    #                 fJ/bit x per-die bandwidth; read == write, destructive read)
     total_tiers      = args.nv_tiers + args.dram_tiers
     dram_per_die     = args.dram_per_stack / total_tiers
     dram_leakage_die = dram_per_die * (1.0 - args.dram_refresh_frac)
     dram_refresh_die = dram_per_die * args.dram_refresh_frac
-    nv_per_die       = args.nv_leakage_factor * dram_leakage_die
+    nv_access_die    = sc.nv_access_power_per_die(args.nv_access_fj, args.stack_bw,
+                                                  args.bw_util, total_tiers)
+    nv_per_die       = args.nv_leakage_factor * dram_leakage_die + nv_access_die
     write_ptrace("nv_tier_ptrace.csv",   names, {n: nv_per_die for n in names if n.startswith("MEM_")})
     write_ptrace("dram_tier_ptrace.csv", names, {n: dram_per_die for n in names if n.startswith("MEM_")})
     write_ptrace("mem_passive_ptrace.csv", names, {})
@@ -305,9 +319,13 @@ def main():
     print(f"  Ring  : {m*1e3:g} mm {sc.RING_LABEL} package surround, lid spans the package")
     print(f"  GPU map: {args.power_map}"
           + (f" (p2a = {args.map_p2a:g}, seed {args.map_seed})" if args.power_map == "cluster" else ""))
-    print(f"  Memory standby power (per die):")
-    print(f"    DRAM   = {dram_per_die:.2f} W  (leakage {dram_leakage_die:.2f} + refresh {dram_refresh_die:.2f})")
-    print(f"    NVDRAM = {nv_per_die:.2f} W  ({args.nv_leakage_factor:g}x DRAM leakage + 0 refresh)  -> < DRAM")
+    print(f"  Memory power (per die):")
+    print(f"    DRAM   = {dram_per_die:.2f} W  (leakage {dram_leakage_die:.2f} + refresh {dram_refresh_die:.2f};"
+          f" access implicit in the workload budget)")
+    print(f"    NVDRAM = {nv_per_die:.2f} W  ({args.nv_leakage_factor:g}x DRAM leakage = "
+          f"{args.nv_leakage_factor*dram_leakage_die:.2f} + access {nv_access_die:.2f}"
+          f" @ {args.nv_access_fj:g} fJ/bit x {args.stack_bw:g} TB/s x {args.bw_util:g} util / {total_tiers} dies;"
+          f" 0 refresh)")
     print(f"  Power : GPU {args.gpu_power:g} W + memory {nv_total+dram_total:g} W"
           f" (NVDRAM {nv_total:g} + DRAM {dram_total:g}) = {args.gpu_power+nv_total+dram_total:g} W total")
     print(f"  Replacement check: hybrid memory {nv_total+dram_total:.1f} W < all-DRAM {all_dram:.1f} W"

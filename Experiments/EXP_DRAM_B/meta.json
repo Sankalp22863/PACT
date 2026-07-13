@@ -13,6 +13,7 @@
   "plots": [
     "heatmaps",
     "surface",
+    "layer_profile",
     "cross_section",
     "table",
     "future"
