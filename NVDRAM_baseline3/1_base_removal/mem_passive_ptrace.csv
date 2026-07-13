@@ -1,0 +1,8 @@
+UnitName,Power,Power1,Power2
+MEM_LB,1e-06,1e-06,1e-06
+MEM_LT,1e-06,1e-06,1e-06
+MEM_RB,1e-06,1e-06,1e-06
+MEM_RT,1e-06,1e-06,1e-06
+Void,1e-06,1e-06,1e-06
+Edge_L,1e-06,1e-06,1e-06
+Edge_R,1e-06,1e-06,1e-06

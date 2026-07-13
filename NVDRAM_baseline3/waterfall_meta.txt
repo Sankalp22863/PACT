@@ -1,0 +1,1 @@
+All-DRAM: 12 DRAM (30x22 die)
