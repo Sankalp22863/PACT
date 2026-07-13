@@ -21,7 +21,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from matplotlib.colors import Normalize
+from matplotlib.colors import Normalize, ListedColormap
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -31,11 +31,17 @@ GPU_X, GPU_Y = 30.0, 22.0                       # mm
 ROWS, COLS = 44, 60
 
 # ---- reference (pact_plots.py) style constants ----
-CMAP = "jet"                                    # blue (coolest) -> red (hottest)
 ELEV, AZIM = 35, -60                            # reference view_init
 BOX = (GPU_X, GPU_Y, GPU_X * 0.05)              # reference (1,1,0.05) flatness, scaled to the rectangle
-MESH_EDGE = (1.0, 1.0, 1.0, 0.45)               # faint WHITE per-cell mesh (reference "graph-paper" look)
+MESH_EDGE = (1.0, 1.0, 1.0, 0.20)               # faint WHITE per-cell mesh (light so colours stay rich)
 PEAK_C = "#b30000"                              # reference peak-callout red
+
+# jet, deepened so the colours read richer (not washed out); used for BOTH the
+# plane facecolors and the colorbar so they stay consistent.
+DARKEN = 0.85                                   # multiply colormap RGB to deepen
+_jc = plt.get_cmap("jet")(np.linspace(0, 1, 256))
+_jc[:, :3] *= DARKEN
+CMAP = ListedColormap(_jc)                      # blue (coolest) -> red (hottest), deepened
 
 
 def load(idx):
@@ -51,7 +57,7 @@ def panel(fig, ax, g, title):
     xs = np.linspace(0, GPU_X, COLS)
     ys = np.linspace(0, GPU_Y, ROWS)
     X, Y = np.meshgrid(xs, ys)
-    cmap = plt.get_cmap(CMAP)
+    cmap = CMAP
     norm = Normalize(vmin=g.min(), vmax=g.max())
     surf = ax.plot_surface(X, Y, np.zeros_like(g), facecolors=cmap(norm(g)), shade=False,
                            rstride=1, cstride=1, linewidth=0.12, antialiased=True)
