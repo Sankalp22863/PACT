@@ -1,20 +1,20 @@
-# EXP_NVDRAM_0_STCO — 0 NVDRAM + 12 DRAM (pure-DRAM baseline) tiers under the full STCO stack (no frequency scaling)
+# EXP_NVDRAM_0_STCO — STCO endpoint, 0 NVDRAM + 12 DRAM tiers (no frequency scaling)
 
-Same model as the [`EXP_NVDRAM_*`](../EXP_NVDRAM_B/) baseline-conditions family
-(30x22 mm die, corner stacks, cluster power map p2a=2.19, 6 mm PKG_MOLD package
-ring, anisotropic uBump/BSPDN), with the imec STCO structural interventions
-applied cumulatively — but **no GPU frequency scaling**: the GPU runs the full
-**414 W** workload.
+Built on the **NVDRAM_baseline_no_freq / waterfall model** (NOT the
+Experiments-framework model used by EXP_DRAM_B / EXP_NVDRAM_*): rectangular
+30x22 mm die, two stack columns on the short edges, 5 mm effective merge void
+(`--void-um 5000`, calibrated so stack merging is worth ~-17 C as in the paper),
+1 mm on-die edge inserts, 1.5 mm GPU-Si spreader (`--gpu-si-um 1500`,
+calibration), uniform GPU power map, 44x60 grid, no package ring/anisotropy.
 
-STCO steps applied (see `NVDRAM_waterfall*` for the step-by-step study):
-1. **Base-die removal** — the 2 HBM base-die sublayers are dropped.
-2. **Stack merging** — no inter-stack mold gap (`--merged`).
-3. **Top-die thinning** — top memory die Si 169 um -> 50 um.
-4. **Edge thermal-Si** — 1 mm thermal-silicon inserts in the package ring
-   adjacent to each short die edge, on the memory sublayers (paper Fig. 10).
+All four STCO structural steps are applied (= stage `4_thermal_si` of
+`../../NVDRAM_baseline_no_freq/`): base-die removal, stack merging (void ->
+MERGE_SI k=140), top-die thinning (169 -> 50 um), edge inserts -> THERMAL_SI.
+**No GPU frequency scaling — the GPU runs the full 414 W.**
 
-Memory power: canonical standby model (DRAM = 40 W/stack budget; NVDRAM =
-1.083 W/die leakage, access zeroed via `--bw-util 0`).
+Memory power = standby + ACTIVE traffic (waterfall model, `--active`):
+alpha = 0.2421 of 4.4 TB/s per stack; DRAM 70 fJ/bit -> 3.383 W/die,
+NVDRAM 90 fJ/bit -> 1.147 W/die.
 
 Run from `../scripts/`:  `python3 run_experiment.py ../EXP_NVDRAM_0_STCO`
-Key figure: `Results/layerwise_temperature.png` (GPU / NVDRAM / DRAM layerwise peaks).
+Key figure: `Results/layerwise_temperature.png` (GPU / NVDRAM / DRAM layer peaks).

@@ -51,6 +51,7 @@ FLP_NAMES = {
     "daf_flp.csv":           "DAF bond",
     # detailed sublayers (EXP_DRAM_R + EXP_NVDRAM_S)
     "bspdn_flp.csv":         "BSPDN",
+    "gpu_si_flp.csv":        "GPU Si substrate",
     "beol_mxy_flp.csv":      "BEOL_MXY",
     "oxide_flp.csv":         "Oxide",
     "hbm_base_beol_flp.csv": "HBM base BEOL",
@@ -64,7 +65,7 @@ FLP_NAMES = {
 }
 
 # material label -> friendly name + colour (for the cross-section / table)
-SURROUND = {"THERMAL_SI", "FILLER", "MOLD", "SILICON_CARRIER", "PKG_MOLD"}
+SURROUND = {"THERMAL_SI", "FILLER", "MOLD", "SILICON_CARRIER", "PKG_MOLD", "MERGE_SI"}
 MAT_NAME = {
     "GPU_Si": "GPU substrate (Si)", "GPU_FEOL": "GPU FEOL", "GPU_BEOL": "GPU BEOL",
     "UBUMP": "GPU-mem uBump", "NV_FEOL": "NVDRAM die", "DRAM_Si": "DRAM die",
@@ -89,7 +90,7 @@ MAT_COLOR = {
     "HBM_BASE_BEOL": "#fdd0a2", "HYBRID_BOND": "#c7e9c0",
     "DRAM_BEOL": "#fdd0a2", "DRAM_SI": "#6baed6", "TIM": "#fa9fb5", "LID": "#bdbdbd",
     "NV_DIE_SI": "#74c476", "NV_DIE_BEOL": "#c7e9c0",
-    "PKG_MOLD": "#efedf5",
+    "PKG_MOLD": "#efedf5", "GPU_SI": "#9ecae1", "MERGE_SI": "#3182bd",
 }
 DEFAULT_COLOR = "#cccccc"
 
@@ -498,9 +499,12 @@ def layer_profile(prefix, lcf, out, geom, mask_surround=False):
         raise SystemExit(f"No '{prefix}.layer*' files. Run PACT first.")
     labels = layer_labels(lcf, max(ids))
     die_layers = {}
+    feol_layer = 1
     if lcf and os.path.exists(lcf):
         n = 0
         for lid, flp, _ in read_lcf(lcf):
+            if flp == "gpu_feol_flp.csv":
+                feol_layer = lid
             if flp in ("dram_tier_flp.csv", "nv_tier_flp.csv"):
                 n += 1
                 die_layers[lid] = ("NVDRAM" if "nv_" in flp else "DRAM", n)
@@ -523,8 +527,9 @@ def layer_profile(prefix, lcf, out, geom, mask_surround=False):
     if dr_x:
         ax.plot(dr_x, [pk[xs.index(x)] for x in dr_x], "s", ms=5, color="#e6862e",
                 zorder=3, label="DRAM die")
-    ax.plot([1], [pk[xs.index(1)]], "D", ms=7, color="#b30000", zorder=3, label="GPU FEOL")
-    ax.annotate(f"GPU FEOL  {pk[xs.index(1)]:.1f} °C", (1, pk[xs.index(1)]),
+    ax.plot([feol_layer], [pk[xs.index(feol_layer)]], "D", ms=7, color="#b30000",
+            zorder=3, label="GPU FEOL")
+    ax.annotate(f"GPU FEOL  {pk[xs.index(feol_layer)]:.1f} °C", (feol_layer, pk[xs.index(feol_layer)]),
                 textcoords="offset points", xytext=(8, 8), fontsize=9,
                 fontweight="bold", color="#b30000")
     ticks, tick_labels = [], []

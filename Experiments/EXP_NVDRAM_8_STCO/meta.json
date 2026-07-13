@@ -1,7 +1,7 @@
 {
   "name": "EXP_NVDRAM_8_STCO",
-  "title": "8 NVDRAM + 4 DRAM tiers \u2014 STCO optimized (base-die removal + merging + thin top die + edge thermal-Si), 414 W GPU",
-  "generate": "python3 generate.py --nv-tiers 8 --dram-tiers 4 --merged --no-base-die --thin-top-die --edge-si 0.001 --nv-access-fj 90 --bw-util 0 --gpu-power 414",
+  "title": "8 NVDRAM + 4 DRAM tiers \u2014 STCO endpoint per NVDRAM_baseline_no_freq (no frequency scaling), 414 W GPU",
+  "generate": "python3 generate.py --nv-tiers 8 --dram-tiers 4 --gpu-si-um 1500 --void-um 5000 --active --no-base-die --merge-stacks --thin-top-die --optimized --gpu-power 414",
   "lcf": "hybrid_lcf.csv",
   "config": "experiment.config",
   "modelparams": "modelParams.config",
@@ -9,7 +9,7 @@
   "gpu_len": 0.03,
   "gpu_wid": 0.022,
   "mem_side": 0.011,
-  "pkg_margin": 0.006,
+  "pkg_margin": 0.0,
   "plots": [
     "heatmaps",
     "surface",
@@ -20,11 +20,11 @@
   ],
   "side_by_side": {
     "left": [
-      1,
+      2,
       "GPU FEOL (compute die)"
     ],
     "right": [
-      7,
+      8,
       "Lowest NVDRAM tier"
     ]
   }
