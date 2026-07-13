@@ -34,6 +34,9 @@ ROWS, COLS = 44, 60
 ELEV, AZIM = 35, -60                            # reference view_init
 BOX = (GPU_X, GPU_Y, GPU_X * 0.05)              # reference (1,1,0.05) flatness, scaled to the rectangle
 PEAK_C = "#b30000"                              # reference peak-callout red
+# FIXED temperature colour scale, shared across ALL surfaces_thermal_si figures so a
+# given temperature is the same colour everywhere (global data span ~60.5-104.2 C).
+VMIN, VMAX = 60.0, 105.0
 
 # jet, deepened so the colours read richer (not washed out); used for BOTH the
 # plane facecolors and the colorbar so they stay consistent.
@@ -57,7 +60,7 @@ def panel(fig, ax, g, title):
     ys = np.linspace(0, GPU_Y, ROWS)
     X, Y = np.meshgrid(xs, ys)
     cmap = CMAP
-    norm = Normalize(vmin=g.min(), vmax=g.max())
+    norm = Normalize(vmin=VMIN, vmax=VMAX)       # fixed scale (shared across all figures)
     ax.plot_surface(X, Y, np.zeros_like(g), facecolors=cmap(norm(g)), shade=False,
                     rstride=1, cstride=1, linewidth=0, antialiased=True)   # smooth, no mesh
     ax.view_init(elev=ELEV, azim=AZIM)
