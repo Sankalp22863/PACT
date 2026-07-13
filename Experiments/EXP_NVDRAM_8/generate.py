@@ -47,6 +47,7 @@ Usage:
                        [--nv-leakage-factor F] [--gpu-len M] [--gpu-wid M]
                        [--mem-side M] [--gap-wid M] [--merged] [--pkg-margin M]
                        [--power-map {cluster,uniform}] [--map-p2a R] [--map-seed N]
+                       [--no-base-die] [--thin-top-die] [--edge-si M]   # STCO steps
 """
 
 import argparse
@@ -187,6 +188,14 @@ def main():
                    help="tile peak-to-average power-density ratio of the cluster map")
     p.add_argument("--map-seed", type=int, default=sc.MAP_SEED,
                    help="seed for the cluster map's utilisation pattern")
+    # STCO interventions (imec staircase steps; see NVDRAM_waterfall for the study)
+    p.add_argument("--no-base-die", action="store_true",
+                   help="STCO: HBM base-die removal (drop the 2 base-die sublayers)")
+    p.add_argument("--thin-top-die", action="store_true",
+                   help="STCO: thin the top memory die Si from 169 um to the inner-die 50 um")
+    p.add_argument("--edge-si", type=float, default=0.0,
+                   help="STCO: thermal-Si insert width (m) in the package ring adjacent to each"
+                        " short die edge, on the memory sublayers (paper Fig. 10; e.g. 0.001)")
     p.add_argument("--grid", type=int, default=GRID)
     args = p.parse_args()
 
@@ -199,6 +208,11 @@ def main():
 
     def ringed(blocks):
         return sc.add_package_ring(blocks, args.gpu_len, args.gpu_wid, m)
+
+    def ringed_mem(blocks):
+        # memory sublayers may carry the edge thermal-Si inserts in the ring
+        return sc.add_package_ring(blocks, args.gpu_len, args.gpu_wid, m,
+                                   edge_si=args.edge_si)
 
     def passive_layer(flp_path, ptrace_path, blocks):
         write_flp(flp_path, blocks)
@@ -245,13 +259,13 @@ def main():
               f"(p2a = {max(tile_power.values())/avg:.2f}, seed {args.map_seed})")
 
     # ---- memory-stack sublayers (corner stacks + gaps + central Si + ring) ----
-    base_beol = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "HBM_BASE_BEOL"))
-    base_si   = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "HBM_BASE_SI"))
-    hybond    = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "HYBRID_BOND"))
-    nv_beol   = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "NV_DIE_BEOL"))
-    nv_si     = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "NV_DIE_SI"))
-    dram_beol = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "DRAM_BEOL"))
-    dram_si   = ringed(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "DRAM_SI"))
+    base_beol = ringed_mem(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "HBM_BASE_BEOL"))
+    base_si   = ringed_mem(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "HBM_BASE_SI"))
+    hybond    = ringed_mem(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "HYBRID_BOND"))
+    nv_beol   = ringed_mem(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "NV_DIE_BEOL"))
+    nv_si     = ringed_mem(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "NV_DIE_SI"))
+    dram_beol = ringed_mem(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "DRAM_BEOL"))
+    dram_si   = ringed_mem(mem_tier_blocks(args.gpu_len, args.gpu_wid, args.mem_side, gap, "DRAM_SI"))
     names = [b[0] for b in dram_si]
     write_flp("hbm_base_beol_flp.csv", base_beol)
     write_flp("hbm_base_si_flp.csv",   base_si)
@@ -285,21 +299,23 @@ def main():
         ("beol_mxy_flp.csv", T_BEOL_MXY, "beol_mxy_ptrace.csv"),
         ("oxide_flp.csv",    T_OXIDE,    "oxide_ptrace.csv"),
         ("ubump_flp.csv",    T_UBUMP,    "ubump_ptrace.csv"),
-        ("hbm_base_beol_flp.csv", T_BASE_BEOL, "mem_passive_ptrace.csv"),
-        ("hbm_base_si_flp.csv",   T_BASE_SI,   "mem_passive_ptrace.csv"),
     ]
+    if not args.no_base_die:   # STCO base-die removal drops these two sublayers
+        layers.append(("hbm_base_beol_flp.csv", T_BASE_BEOL, "mem_passive_ptrace.csv"))
+        layers.append(("hbm_base_si_flp.csv",   T_BASE_SI,   "mem_passive_ptrace.csv"))
+    t_top = T_DIE_SI if args.thin_top_die else T_DRAM_TOP   # STCO top-die thinning
     # NVDRAM tiers (bottom): Hybrid Bonding -> NVDRAM Die BEOL -> NVDRAM Die Si.
     # When there are no DRAM tiers on top, the top-most NVDRAM die is the thick
-    # top die (T_DRAM_TOP) so the total stack height matches the DRAM cases.
+    # top die so the total stack height matches the DRAM cases.
     for i in range(args.nv_tiers):
         nv_is_top = (args.dram_tiers == 0 and i == args.nv_tiers - 1)
-        t_si = T_DRAM_TOP if nv_is_top else T_DIE_SI
+        t_si = t_top if nv_is_top else T_DIE_SI
         layers.append(("hybrid_bond_flp.csv", T_HYBOND,  "mem_passive_ptrace.csv"))
         layers.append(("nv_die_beol_flp.csv", T_DIE_BEOL,"mem_passive_ptrace.csv"))
         layers.append(("nv_tier_flp.csv",     t_si,      "nv_tier_ptrace.csv"))
     # DRAM tiers (top): Hybrid Bonding -> DRAM Die BEOL -> DRAM Die Si (last = top die)
     for t in range(args.dram_tiers):
-        t_si = T_DRAM_TOP if t == args.dram_tiers - 1 else T_DIE_SI
+        t_si = t_top if t == args.dram_tiers - 1 else T_DIE_SI
         layers.append(("hybrid_bond_flp.csv",   T_HYBOND,   "mem_passive_ptrace.csv"))
         layers.append(("dram_die_beol_flp.csv", T_DIE_BEOL, "mem_passive_ptrace.csv"))
         layers.append(("dram_tier_flp.csv",     t_si,       "dram_tier_ptrace.csv"))
@@ -311,8 +327,15 @@ def main():
     nv_total   = 4 * nv_per_die * args.nv_tiers
     dram_total = 4 * dram_per_die * args.dram_tiers
     all_dram   = 4 * dram_per_die * total_tiers
+    stco = [s for s, on in [("base-die removal", args.no_base_die),
+                            ("stack merging", args.merged),
+                            ("thin top die", args.thin_top_die),
+                            (f"edge thermal-Si {args.edge_si*1e3:g} mm", args.edge_si > 0)] if on]
     print(f"\n  Layers: {len(layers)} device layers"
-          f"  (5 GPU/interface + 2 base die + {3*args.nv_tiers} NVDRAM + {3*args.dram_tiers} DRAM sublayers + TIM + Lid)")
+          f"  (5 GPU/interface + {0 if args.no_base_die else 2} base die"
+          f" + {3*args.nv_tiers} NVDRAM + {3*args.dram_tiers} DRAM sublayers + TIM + Lid)")
+    if stco:
+        print(f"  STCO  : " + ", ".join(stco) + "  (no frequency scaling)")
     print(f"  Layout: central {FILLER_CENTER} column; inter-stack gap"
           f" {gap*1e3:g} mm {FILLER_GAP} (equivalent-k for the paper's 0.1 mm)"
           if gap else "  Layout: central THERMAL_SI column; stacks merged")

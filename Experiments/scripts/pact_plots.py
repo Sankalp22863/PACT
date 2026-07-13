@@ -515,9 +515,15 @@ def layer_profile(prefix, lcf, out, geom, mask_surround=False):
     ax.fill_between(xs, mn, pk, color="#9ecae1", alpha=0.35, label="min–max across layer")
     ax.plot(xs, pk, "-", color="#b30000", lw=2.0, label="layer peak")
     ax.plot(xs, av, "--", color="#555555", lw=1.3, label="layer mean")
-    d_x = [x for x in xs if x in die_layers]
-    ax.plot(d_x, [pk[xs.index(x)] for x in d_x], "s", ms=5, color="#e6862e",
-            zorder=3, label="memory die layers")
+    nv_x = [x for x in xs if die_layers.get(x, ("",))[0] == "NVDRAM"]
+    dr_x = [x for x in xs if die_layers.get(x, ("",))[0] == "DRAM"]
+    if nv_x:
+        ax.plot(nv_x, [pk[xs.index(x)] for x in nv_x], "o", ms=6, color="#d62728",
+                zorder=3, label="NVDRAM die")
+    if dr_x:
+        ax.plot(dr_x, [pk[xs.index(x)] for x in dr_x], "s", ms=5, color="#e6862e",
+                zorder=3, label="DRAM die")
+    ax.plot([1], [pk[xs.index(1)]], "D", ms=7, color="#b30000", zorder=3, label="GPU FEOL")
     ax.annotate(f"GPU FEOL  {pk[xs.index(1)]:.1f} °C", (1, pk[xs.index(1)]),
                 textcoords="offset points", xytext=(8, 8), fontsize=9,
                 fontweight="bold", color="#b30000")

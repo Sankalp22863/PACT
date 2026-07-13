@@ -57,20 +57,40 @@ MAP_SEED = 7            # deterministic map; change for a different workload
 
 
 def add_package_ring(blocks, die_len, die_wid, margin=PKG_MARGIN,
-                     ring_label=RING_LABEL):
+                     ring_label=RING_LABEL, edge_si=0.0):
     """Offset die-local blocks by (margin, margin) and wrap them in a package
-    ring so the layer tiles the full (die_len+2m) x (die_wid+2m) footprint."""
+    ring so the layer tiles the full (die_len+2m) x (die_wid+2m) footprint.
+
+    edge_si > 0 models the paper's "thermal silicon optimization" (Fig. 10):
+    a strip of that width in the ring immediately adjacent to each SHORT die
+    edge (where the stacks sit) becomes THERMAL_SI instead of mold, giving the
+    stack outer edges an extra vertical escape path. Apply it on the memory
+    sublayers only."""
     if margin <= 0:
         return list(blocks)
     m = margin
+    e = min(edge_si, m)
     pl, pw = die_len + 2 * m, die_wid + 2 * m
     out = [(n, x + m, y + m, l, w, lab) for (n, x, y, l, w, lab) in blocks]
     out += [
         ("Ring_B", 0.0, 0.0,     pl, m, ring_label),
         ("Ring_T", 0.0, m + die_wid, pl, m, ring_label),
-        ("Ring_L", 0.0, m, m, die_wid, ring_label),
-        ("Ring_R", m + die_len, m, m, die_wid, ring_label),
     ]
+    if e > 1e-9:
+        out += [
+            ("EdgeSi_L", m - e, m, e, die_wid, "THERMAL_SI"),
+            ("EdgeSi_R", m + die_len, m, e, die_wid, "THERMAL_SI"),
+        ]
+        if m - e > 1e-9:
+            out += [
+                ("Ring_L", 0.0, m, m - e, die_wid, ring_label),
+                ("Ring_R", m + die_len + e, m, m - e, die_wid, ring_label),
+            ]
+    else:
+        out += [
+            ("Ring_L", 0.0, m, m, die_wid, ring_label),
+            ("Ring_R", m + die_len, m, m, die_wid, ring_label),
+        ]
     return out
 
 

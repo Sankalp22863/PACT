@@ -24,6 +24,7 @@ individual functions are importable on their own too.
 import glob
 import json
 import os
+import re
 import sys
 
 import numpy as np
@@ -255,8 +256,11 @@ def peak_vs_nv_fraction(profiles, out):
 
 # ── discovery + dispatcher ────────────────────────────────────────────────────
 def discover_profiles(exp_root=EXP_ROOT, baseline="EXP_DRAM_B"):
-    """Discover EXP_NVDRAM_<n> experiments (+ optional pure-DRAM baseline)."""
-    dirs = sorted(glob.glob(os.path.join(exp_root, "EXP_NVDRAM_[0-9]*")))
+    """Discover EXP_NVDRAM_<n> experiments (+ optional pure-DRAM baseline).
+    Variant dirs like EXP_NVDRAM_4_STCO are excluded — the NV-fraction sweep
+    compares like-for-like baseline-conditions experiments only."""
+    dirs = sorted(d for d in glob.glob(os.path.join(exp_root, "EXP_NVDRAM_[0-9]*"))
+                  if re.fullmatch(r"EXP_NVDRAM_\d+", os.path.basename(d)))
     profiles = [p for p in (tier_profile(d) for d in dirs) if p]
     profiles.sort(key=lambda p: p["n_nv"])
     if baseline:
