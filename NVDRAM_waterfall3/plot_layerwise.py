@@ -1,14 +1,15 @@
 """
-Layerwise stack temperature profile — all-DRAM vs φ-HBM  (post-thermal-silicon)
-================================================================================
-For the FINAL (thermal-silicon) stage only, plot the peak temperature of every
-memory die as a function of its position in the stack (die 1 = bottom, nearest
-the GPU; die 12 = top, nearest the heat spreader), for:
-  * all-DRAM stack  (../NVDRAM_baseline3, 12 DRAM)              — red
-  * φ-HBM stack     (this folder, 4 NVDRAM bottom + 8 DRAM top) — blue
-The GPU compute-die peak is shown at position 0 as the thermal anchor. Each die
-temperature is the peak under the stack columns (same mask as the waterfall).
-Reads only <stack>/5_thermal_si/. Output: layerwise_thermal_si.png / .pdf
+Layerwise stack temperature profile — all-DRAM vs φ-HBM
+=======================================================
+Peak temperature of every memory die vs its position in the stack (tier 1 =
+bottom, nearest the GPU; tier 12 = top, nearest the lid), for:
+  * Pure DRAM stack (HBM only)  = ../NVDRAM_baseline3   — blue dashed, square markers
+  * NVDRAM + DRAM hybrid stack  = this folder (φ-HBM)   — purple line; NVDRAM tiers
+    as red circles, DRAM tiers as orange squares; NVDRAM region shaded.
+Each die temperature is the peak under the stack columns (same mask as the
+waterfall). One figure per stage — generated for BOTH:
+  * 0_baseline   (3D stacking, no optimizations) -> layerwise_baseline.png/.pdf
+  * 5_thermal_si (after thermal-silicon opt.)     -> layerwise_thermal_si.png/.pdf
 """
 
 import os
@@ -19,15 +20,23 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-BASE = os.path.join(HERE, "..", "NVDRAM_baseline3")
-STAGE = "5_thermal_si"                      # final optimization only
+BASE = os.path.join(HERE, "..", "NVDRAM_baseline3")     # pure-DRAM stack
 PREFIX = "hybrid.grid.steady"
 GPU_X, GPU_Y = 0.030, 0.022
 ROWS, COLS = 44, 60
 EDGE_INSERT, CENTRAL_VOID = 0.001, 0.005    # under-stack mask geometry (matches run_waterfall)
 
-AD, NV, DR = "#c0392b", "#08519c", "#2c7fb8"   # all-DRAM red, NVDRAM dark blue, DRAM steel blue
+# ---- color scheme (per the reference mockup) ----
+PURPLE = "#7d3c98"      # NVDRAM + DRAM hybrid stack line + its annotation
+NV_RED = "#c0392b"      # NVDRAM tier markers (circles) + NVDRAM region shading/label
+DR_ORG = "#e08214"      # DRAM tier markers (squares) on the hybrid stack
+BLUE = "#2c7fb8"        # pure DRAM stack (dashed line + square markers) + its annotation
 INK, MUTE = "#2b2b2b", "#8a8a8a"
+
+STAGES = [
+    ("0_baseline",   "3D-stacking baseline (no optimizations)", "layerwise_baseline"),
+    ("5_thermal_si", "after thermal-silicon optimization",      "layerwise_thermal_si"),
+]
 
 
 def stack_mask():
@@ -44,88 +53,73 @@ def stack_mask():
 MASK = stack_mask()
 
 
-def grid(stack_dir, layer):
-    g = (np.loadtxt(os.path.join(stack_dir, STAGE, f"{PREFIX}.layer{layer}")) - 273.15)
+def grid(stack_dir, stage, layer):
+    g = np.loadtxt(os.path.join(stack_dir, stage, f"{PREFIX}.layer{layer}")) - 273.15
     return g.reshape(ROWS, COLS)
 
 
-def profile(stack_dir):
-    """Return (gpu_peak, [(die_pos, tech, peak_C), ...]) for the memory dies,
-    ordered bottom (nearest GPU) -> top."""
-    lcf = os.path.join(stack_dir, STAGE, "hybrid_lcf.csv")
-    mem_layers, gpu_layer = [], None
+def profile(stack_dir, stage):
+    """[(tier, tech, peak_C), ...] for the memory dies, bottom (nearest GPU) -> top.
+    Layer indices are read from THIS stage's LCF (base-die presence shifts them)."""
+    lcf = os.path.join(stack_dir, stage, "hybrid_lcf.csv")
+    mem = []
     with open(lcf) as fh:
         next(fh)
         for line in fh:
             idx, flp = [c.strip() for c in line.split(",")[:2]]
-            if flp == "gpu_feol_flp.csv":
-                gpu_layer = int(idx)
-            elif flp == "nv_tier_flp.csv":
-                mem_layers.append((int(idx), "NVDRAM"))
+            if flp == "nv_tier_flp.csv":
+                mem.append((int(idx), "NVDRAM"))
             elif flp == "dram_tier_flp.csv":
-                mem_layers.append((int(idx), "DRAM"))
-    mem_layers.sort()
-    gpu_peak = float(grid(stack_dir, gpu_layer).max())
-    dies = [(pos + 1, tech, float(grid(stack_dir, lyr)[MASK].max()))
-            for pos, (lyr, tech) in enumerate(mem_layers)]
-    return gpu_peak, dies
+                mem.append((int(idx), "DRAM"))
+    mem.sort()
+    return [(pos + 1, tech, float(grid(stack_dir, stage, lyr)[MASK].max()))
+            for pos, (lyr, tech) in enumerate(mem)]
 
 
-def main():
-    ad_gpu, ad = profile(BASE)          # all-DRAM
-    ph_gpu, ph = profile(HERE)          # φ-HBM
+def make(stage, stage_title, out_name):
+    dram = profile(BASE, stage)      # pure DRAM
+    hyb = profile(HERE, stage)       # φ-HBM hybrid
+    n = len(hyb)
 
     fig, ax = plt.subplots(figsize=(10.5, 6.8))
 
-    # NVDRAM region shading (φ-HBM bottom dies); y in axes fraction so it stays put
-    n_nv = sum(1 for _, t, _ in ph if t == "NVDRAM")
-    ax.axvspan(0.5, n_nv + 0.5, color=NV, alpha=0.06, zorder=0)
-    ax.text(n_nv / 2 + 0.5, 0.965, "NVDRAM dies\n(φ-HBM bottom)",
-            transform=ax.get_xaxis_transform(), ha="center", va="top",
-            fontsize=9, color=NV, fontweight="bold")
+    # NVDRAM region shading (hybrid bottom dies)
+    n_nv = sum(1 for _, t, _ in hyb if t == "NVDRAM")
+    if n_nv:
+        ax.axvspan(0.5, n_nv + 0.5, color=NV_RED, alpha=0.08, zorder=0)
+        ax.text((n_nv + 1) / 2.0, 0.035, "NVDRAM (bottom)", transform=ax.get_xaxis_transform(),
+                ha="center", va="bottom", fontsize=9.5, color=NV_RED, fontweight="bold")
 
-    # all-DRAM line (positions 0..12 with GPU at 0)
-    xad = [0] + [p for p, _, _ in ad]
-    yad = [ad_gpu] + [t for _, _, t in ad]
-    ax.plot(xad, yad, "-o", color=AD, lw=2.4, ms=7, mec="white", mew=1.2,
-            zorder=5, label="All-DRAM stack (12 DRAM)")
+    # pure DRAM stack — blue dashed line, square markers
+    xd = [p for p, _, _ in dram]
+    yd = [t for _, _, t in dram]
+    ax.plot(xd, yd, "--", color=BLUE, lw=2.2, marker="s", ms=8, mec="white", mew=1.0, zorder=5)
 
-    # φ-HBM line, NVDRAM vs DRAM markers
-    xph = [0] + [p for p, _, _ in ph]
-    yph = [ph_gpu] + [t for _, _, t in ph]
-    ax.plot(xph, yph, "-", color=DR, lw=2.4, zorder=5, label="φ-HBM stack (4 NVDRAM + 8 DRAM)")
-    for p, tech, t in ph:
-        ax.plot(p, t, "o", ms=8, mec="white", mew=1.2, zorder=6,
-                color=NV if tech == "NVDRAM" else DR)
-    ax.plot(0, ph_gpu, "o", ms=8, color=DR, mec="white", mew=1.2, zorder=6)
+    # hybrid stack — purple line; NVDRAM tiers = red circles, DRAM tiers = orange squares
+    xh = [p for p, _, _ in hyb]
+    yh = [t for _, _, t in hyb]
+    ax.plot(xh, yh, "-", color=PURPLE, lw=2.4, zorder=4)
+    for p, tech, t in hyb:
+        if tech == "NVDRAM":
+            ax.plot(p, t, "o", ms=9, color=NV_RED, mec="white", mew=1.2, zorder=6)
+        else:
+            ax.plot(p, t, "s", ms=8, color=DR_ORG, mec="white", mew=1.0, zorder=6)
 
-    # GPU anchor
-    ax.axvline(0.5, color=MUTE, lw=0.8, ls=":", zorder=1)
-    ax.annotate("GPU\ncompute die", (0, max(ad_gpu, ph_gpu)), xytext=(0, 12),
-                textcoords="offset points", ha="center", va="bottom",
-                fontsize=9, color=INK, fontweight="bold")
-    for x, y, c in [(0, ad_gpu, AD), (0, ph_gpu, DR)]:
-        ax.annotate(f"{y:.1f}", (x, y), xytext=(-10, 0), textcoords="offset points",
-                    ha="right", va="center", fontsize=8.5, color=c, fontweight="bold")
+    # tier-1 (bottom, hottest die) peak callouts, coloured to match each stack
+    ax.annotate(f"{dram[0][2]:.1f} °C", (1, dram[0][2]), xytext=(6, 11), textcoords="offset points",
+                ha="left", va="bottom", fontsize=10, fontweight="bold", color=BLUE, zorder=7)
+    ax.annotate(f"{hyb[0][2]:.1f} °C", (1, hyb[0][2]), xytext=(6, 11), textcoords="offset points",
+                ha="left", va="bottom", fontsize=10, fontweight="bold", color=PURPLE, zorder=7)
 
-    # endpoint labels for the memory dies (bottom + top)
-    for dies, col in [(ad, AD), (ph, DR)]:
-        for p, tech, t in (dies[0], dies[-1]):
-            ax.annotate(f"{t:.1f}", (p, t), xytext=(0, -14 if col == DR else 11),
-                        textcoords="offset points", ha="center",
-                        va="top" if col == DR else "bottom",
-                        fontsize=8.5, color=col, fontweight="bold")
-
-    ax.set_xticks(range(0, 13))
-    ax.set_xticklabels(["GPU"] + [str(i) for i in range(1, 13)], fontsize=9.5, color=INK)
-    ax.set_xlabel("Stack position   (1 = bottom die, nearest GPU  →  12 = top die, nearest spreader)",
-                  fontsize=11, color=INK)
-    ax.set_ylabel("Peak temperature (°C)", fontsize=12, color=INK)
-    ax.set_xlim(-0.6, 12.6)
-    lo = min(min(t for _, _, t in ad), min(t for _, _, t in ph))
-    hi = max(ad_gpu, ph_gpu)
-    ax.set_ylim(lo - 4, hi + 5)
-    ax.grid(axis="y", color=MUTE, alpha=0.25, lw=0.7)
+    ax.set_xticks(range(1, n + 1))
+    ax.set_xticklabels([str(i) for i in range(1, n + 1)], fontsize=9.5, color=INK)
+    ax.set_xlabel("Memory tier index   (1 = bottom, nearest GPU  →  top = lid)", fontsize=11, color=INK)
+    ax.set_ylabel("Peak die temperature (°C)", fontsize=12, color=INK)
+    ax.set_xlim(0.4, n + 0.6)
+    lo = min(min(yd), min(yh))
+    hi = max(max(yd), max(yh))
+    ax.set_ylim(lo - 3, hi + 6)
+    ax.grid(True, color=MUTE, alpha=0.25, lw=0.7, ls=":")
     ax.set_axisbelow(True)
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
@@ -136,23 +130,30 @@ def main():
         lbl.set_color(INK)
 
     handles = [
-        Line2D([0], [0], color=AD, lw=2.4, marker="o", mec="white", label="All-DRAM stack (12 DRAM)"),
-        Line2D([0], [0], color=DR, lw=2.4, marker="o", mec="white", label="φ-HBM stack (4 NVDRAM + 8 DRAM)"),
-        Line2D([0], [0], color=NV, lw=0, marker="o", mec="white", label="NVDRAM die (φ-HBM bottom)"),
+        Line2D([0], [0], color=PURPLE, lw=2.4, label="NVDRAM + DRAM hybrid stack"),
+        Line2D([0], [0], color=NV_RED, lw=0, marker="o", ms=9, mec="white", label="↳ NVDRAM tier (bottom)"),
+        Line2D([0], [0], color=DR_ORG, lw=0, marker="s", ms=8, mec="white", label="↳ DRAM tier (continues on top)"),
+        Line2D([0], [0], color=BLUE, lw=2.2, ls="--", marker="s", ms=8, mec="white",
+               label="Pure DRAM stack (HBM only)"),
     ]
     ax.legend(handles=handles, loc="upper right", frameon=True, fontsize=9.5, framealpha=0.95)
 
-    ax.set_title("Layerwise stack temperature after thermal-silicon optimization — "
-                 "all-DRAM vs φ-HBM (30 × 22 mm)\n"
-                 "Per-die peak under the stacks, active read/write "
+    ax.set_title(f"Layerwise stack temperature — {stage_title}\n"
+                 "all-DRAM vs φ-HBM (30 × 22 mm); per-die peak under the stacks, active read/write "
                  "(α$_w$=0.24, 4.4 TB/s/stack, 70/90 fJ/bit)",
                  fontsize=12, color=INK, pad=14)
 
     fig.tight_layout()
     for ext in ("png", "pdf"):
-        out = os.path.join(HERE, f"layerwise_thermal_si.{ext}")
+        out = os.path.join(HERE, f"{out_name}.{ext}")
         fig.savefig(out, dpi=200, bbox_inches="tight")
         print(f"  wrote {out}")
+    plt.close(fig)
+
+
+def main():
+    for stage, title, out_name in STAGES:
+        make(stage, title, out_name)
 
 
 if __name__ == "__main__":
