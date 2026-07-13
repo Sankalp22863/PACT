@@ -4,8 +4,8 @@ Paper-style layer temperature heatmaps after thermal-silicon optimization
 Reproduces the reference IEDM heatmap style (see PACT/Experiments/scripts/
 pact_plots.py :: surface_plane / _flat_plane): each layer is drawn as a tilted
 FLAT colour plane (colour = temperature, z = 0), jet colormap (blue = coolest →
-red = hottest), a fine per-cell mesh, a near-flat 3D box, a red "Peak
-Temperature" callout, and a per-panel "Temperature (°C)" colorbar.
+red = hottest), a near-flat 3D box, a red "Peak Temperature" callout, and a
+per-panel "Temperature (°C)" colorbar.
 
 Auto-adapts to the stack: one panel per available memory tier — GPU compute die,
 lowest NVDRAM tier (if present), lowest DRAM tier — read from the *_layer.txt
@@ -33,7 +33,6 @@ ROWS, COLS = 44, 60
 # ---- reference (pact_plots.py) style constants ----
 ELEV, AZIM = 35, -60                            # reference view_init
 BOX = (GPU_X, GPU_Y, GPU_X * 0.05)              # reference (1,1,0.05) flatness, scaled to the rectangle
-MESH_EDGE = (1.0, 1.0, 1.0, 0.20)               # faint WHITE per-cell mesh (light so colours stay rich)
 PEAK_C = "#b30000"                              # reference peak-callout red
 
 # jet, deepened so the colours read richer (not washed out); used for BOTH the
@@ -59,9 +58,8 @@ def panel(fig, ax, g, title):
     X, Y = np.meshgrid(xs, ys)
     cmap = CMAP
     norm = Normalize(vmin=g.min(), vmax=g.max())
-    surf = ax.plot_surface(X, Y, np.zeros_like(g), facecolors=cmap(norm(g)), shade=False,
-                           rstride=1, cstride=1, linewidth=0.12, antialiased=True)
-    surf.set_edgecolor(MESH_EDGE)               # faint per-cell mesh over the colour plane
+    ax.plot_surface(X, Y, np.zeros_like(g), facecolors=cmap(norm(g)), shade=False,
+                    rstride=1, cstride=1, linewidth=0, antialiased=True)   # smooth, no mesh
     ax.view_init(elev=ELEV, azim=AZIM)
     ax.set_xlabel("x (mm)", fontsize=10)
     ax.set_ylabel("y (mm)", fontsize=10)
