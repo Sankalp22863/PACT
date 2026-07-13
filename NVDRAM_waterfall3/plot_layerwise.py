@@ -138,11 +138,6 @@ def make(stage, stage_title, out_name):
     ]
     ax.legend(handles=handles, loc="upper right", frameon=True, fontsize=9.5, framealpha=0.95)
 
-    ax.set_title(f"Layerwise stack temperature — {stage_title}\n"
-                 "all-DRAM vs φ-HBM (30 × 22 mm); per-die peak under the stacks, active read/write "
-                 "(α$_w$=0.24, 4.4 TB/s/stack, 70/90 fJ/bit)",
-                 fontsize=12, color=INK, pad=14)
-
     fig.tight_layout()
     for ext in ("png", "pdf"):
         out = os.path.join(HERE, f"{out_name}.{ext}")

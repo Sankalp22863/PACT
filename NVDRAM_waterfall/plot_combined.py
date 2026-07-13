@@ -95,11 +95,6 @@ def main():
         lbl.set_color(INK)
     ax.legend(loc="upper right", frameon=True, fontsize=11, framealpha=0.95)
 
-    ax.set_title("STCO Thermal Waterfall — φ-HBM vs all-DRAM\n"
-                 "calibrated to the reference baseline (all-DRAM 3D = 141.4 °C ≈ reference 141.7 °C); "
-                 "green = NVDRAM benefit per stage",
-                 fontsize=13, color=INK, pad=16)
-
     fig.tight_layout()
     for ext in ("png", "pdf"):
         out = os.path.join(HERE, f"combined_waterfall.{ext}")

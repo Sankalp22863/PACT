@@ -1,0 +1,6 @@
+stage,label,peak_gpu_C,delta_gpu_C,bottom_dram_C,gpu_power_W,bottom_dram_layer
+0_baseline,Baseline (3D stacking),143.13,,121.15,414,10
+1_base_removal,+ HBM base-die removal,139.75,-3.38,121.30,414,8
+2_merge,+ HBM stack merging,122.98,-16.77,111.40,414,8
+3_thin_top,+ Top-die thinning,121.20,-1.78,110.12,414,8
+4_thermal_si,+ Thermal-silicon optimization,104.24,-16.96,100.23,414,8

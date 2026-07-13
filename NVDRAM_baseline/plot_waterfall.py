@@ -111,11 +111,6 @@ def main():
     for lbl in ax.get_xticklabels():
         lbl.set_color(INK)
 
-    ax.set_title("STCO Thermal Waterfall — peak compute-die temperature\n"
-                 f"{label}; cumulative optimizations from the mold baseline "
-                 "(top-side liquid lid; PACT steady-state)",
-                 fontsize=13, color=INK, pad=16)
-
     fig.tight_layout()
     for ext in ("png", "pdf"):
         out = os.path.join(HERE, f"waterfall.{ext}")
