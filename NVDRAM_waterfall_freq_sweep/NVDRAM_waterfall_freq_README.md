@@ -27,13 +27,13 @@ frequency (⇒ GPU power) changes** between folders:
 
 ## Reproduce
 ```bash
-# per frequency f with power P:
+# per frequency f with power P, from inside NVDRAM_waterfall_freq_sweep/:
 cd NVDRAM_waterfall_freq_<f>
 python3 waterfall_generate.py --nv-tiers 4 --dram-tiers 8 --gpu-si-um 1500 \
     --void-um 5000 --active --no-base-die --merge-stacks --thin-top-die \
     --optimized --gpu-power <P>
-python3 ../src/PACT.py hybrid_lcf.csv experiment.config modelParams.config \
+python3 ../../src/PACT.py hybrid_lcf.csv experiment.config modelParams.config \
     --gridSteadyFile hybrid.grid.steady
-# then, from PACT/:
+# then, from NVDRAM_waterfall_freq_sweep/:
 python3 NVDRAM_waterfall_freq_table.py
 ```
