@@ -93,7 +93,7 @@ def make(hyb_stage, base_dir, base_stage, stage_title, out_name):
     if n_nv:
         ax.axvspan(0.5, n_nv + 0.5, color=NV_RED, alpha=0.08, zorder=0)
         ax.text((n_nv + 1) / 2.0, 0.035, "NVDRAM (bottom)", transform=ax.get_xaxis_transform(),
-                ha="center", va="bottom", fontsize=9.5, color=NV_RED, fontweight="bold")
+                ha="center", va="bottom", fontsize=13, color=NV_RED, fontweight="bold")
 
     # pure DRAM stack — blue dashed line, square markers
     xd = [p for p, _, _ in dram]
@@ -111,15 +111,17 @@ def make(hyb_stage, base_dir, base_stage, stage_title, out_name):
             ax.plot(p, t, "s", ms=8, color=DR_ORG, mec="white", mew=1.0, zorder=6)
 
     # tier-1 (bottom, hottest die) peak callouts, coloured to match each stack
-    ax.annotate(f"{dram[0][2]:.1f} °C", (1, dram[0][2]), xytext=(6, 11), textcoords="offset points",
-                ha="left", va="bottom", fontsize=10, fontweight="bold", color=BLUE, zorder=7)
-    ax.annotate(f"{hyb[0][2]:.1f} °C", (1, hyb[0][2]), xytext=(6, 11), textcoords="offset points",
-                ha="left", va="bottom", fontsize=10, fontweight="bold", color=PURPLE, zorder=7)
+    ax.annotate(f"{dram[0][2]:.1f} °C", (1, dram[0][2]), xytext=(8, 13), textcoords="offset points",
+                ha="left", va="bottom", fontsize=15, fontweight="bold", color=BLUE, zorder=7)
+    ax.annotate(f"{hyb[0][2]:.1f} °C", (1, hyb[0][2]), xytext=(8, 13), textcoords="offset points",
+                ha="left", va="bottom", fontsize=15, fontweight="bold", color=PURPLE, zorder=7)
 
     ax.set_xticks(range(1, n + 1))
-    ax.set_xticklabels([str(i) for i in range(1, n + 1)], fontsize=9.5, color=INK)
-    ax.set_xlabel("Memory tier index   (1 = bottom, nearest GPU  →  top = lid)", fontsize=11, color=INK)
-    ax.set_ylabel("Peak die temperature (°C)", fontsize=12, color=INK)
+    ax.set_xticklabels([str(i) for i in range(1, n + 1)], fontsize=12.5, color=INK,
+                       fontweight="bold")
+    ax.set_xlabel("Memory tier index   (1 = bottom, nearest GPU  →  top = lid)",
+                  fontsize=14, color=INK, fontweight="bold")
+    ax.set_ylabel("Peak die temperature (°C)", fontsize=14, color=INK, fontweight="bold")
     ax.set_xlim(0.4, n + 0.6)
     lo = min(min(yd), min(yh))
     hi = max(max(yd), max(yh))
@@ -130,9 +132,10 @@ def make(hyb_stage, base_dir, base_stage, stage_title, out_name):
         ax.spines[s].set_visible(False)
     for s in ("left", "bottom"):
         ax.spines[s].set_color(MUTE)
-    ax.tick_params(colors=MUTE)
-    for lbl in ax.get_xticklabels():
+    ax.tick_params(colors=MUTE, labelsize=12.5)
+    for lbl in ax.get_xticklabels() + ax.get_yticklabels():
         lbl.set_color(INK)
+        lbl.set_fontweight("bold")
 
     handles = [
         Line2D([0], [0], color=PURPLE, lw=2.4, label="NVDRAM + DRAM hybrid stack"),
@@ -141,7 +144,8 @@ def make(hyb_stage, base_dir, base_stage, stage_title, out_name):
         Line2D([0], [0], color=BLUE, lw=2.2, ls="--", marker="s", ms=8, mec="white",
                label="Pure DRAM stack (HBM only)"),
     ]
-    ax.legend(handles=handles, loc="upper right", frameon=True, fontsize=9.5, framealpha=0.95)
+    ax.legend(handles=handles, loc="upper right", frameon=True, framealpha=0.95,
+              prop={"size": 11.5, "weight": "bold"})
 
     fig.tight_layout()
     for ext in ("png", "pdf"):

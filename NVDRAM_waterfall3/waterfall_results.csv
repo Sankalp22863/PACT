@@ -1,7 +1,7 @@
 stage,label,peak_gpu_C,delta_gpu_C,bottom_dram_C,gpu_power_W,bottom_dram_layer
-0_baseline,Baseline (3D stacking),137.74,,100.26,355.493,22
-1_base_removal,+ HBM base-die removal,134.40,-3.34,100.36,355.493,20
-2_merge,+ HBM stack merging,117.36,-17.04,93.06,355.493,20
-3_thin_top,+ Top-die thinning,115.68,-1.68,91.88,355.493,20
-4_freq_0p7,+ 0.7x GPU frequency,92.93,-22.75,75.97,297.102,20
-5_thermal_si,+ Thermal-silicon optimization,80.77,-12.16,71.08,297.102,20
+0_baseline,Baseline (3D stacking),137.74,,100.26,414,22
+1_base_removal,+ HBM base-die removal,134.40,-3.34,100.36,414,20
+2_merge,+ HBM stack merging,117.36,-17.04,93.06,414,20
+3_thin_top,+ Top-die thinning,115.68,-1.68,91.88,414,20
+4_freq_0p8,+ 0.8x GPU frequency,106.73,-8.95,85.62,368,20
+5_thermal_si,+ Thermal-silicon optimization,91.71,-15.02,79.66,368,20

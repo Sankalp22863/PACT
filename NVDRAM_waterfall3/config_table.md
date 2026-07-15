@@ -1,0 +1,8 @@
+| Configuration | Peak DRAM T | Lowest DRAM T | Peak GPU T | Thermally constrained |
+|---|---|---|---|---|
+| 3D all-DRAM | 121.2 °C | 75.0 °C | 143.1 °C | True |
+| 2 NVDRAM layers | 92.7 °C | 69.4 °C | 101.4 °C | True |
+| 4 NVDRAM layers | 85.2 °C | 67.8 °C | 98.8 °C | False |
+| 3D optimized | 100.2 °C | 71.0 °C | 104.2 °C | True |
+| φ-HBM optimized | 79.7 °C | 63.7 °C | 91.7 °C | False |
+| All-NVDRAM | — | — | 90.8 °C | N/A |

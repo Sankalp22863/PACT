@@ -2,7 +2,7 @@
 
 The active-access counterpart of [`../NVDRAM_waterfall2`](../NVDRAM_waterfall2/):
 identical paper-faithful geometry and calibration, φ-HBM stack
-(**4 NVDRAM bottom + 8 DRAM top**), 355.49 W GPU, 0.7× frequency stage. The
+(**4 NVDRAM bottom + 8 DRAM top**), 414 W GPU, 0.8× frequency stage (368 W, paper Fig. 8). The
 **only** change is that the memory dies now carry **active read/write dynamic
 power** on top of standby/refresh.
 
@@ -35,7 +35,7 @@ so the bottom NVDRAM dies stay the coolest active layers in the stack.
 | + HBM base-die removal | 134.4 | −3.3 | 100.4 |
 | + HBM stack merging | 117.4 | −17.0 | 93.1 |
 | + Top-die thinning | 115.7 | −1.7 | 91.9 |
-| + 0.7× GPU frequency | 92.9 | −22.8 | 76.0 |
+| + 0.8× GPU frequency | 106.7 | −9.0 | 85.6 |
 | + Thermal silicon | **80.8** | −12.2 | 71.1 |
 
 vs. the standby-only waterfall2 final point (GPU 80.4 / DRAM 70.8): the active
@@ -56,7 +56,7 @@ the all-DRAM baseline3 at every matched stage (final: 80.8 vs 86.6 °C GPU).
 ## Reproduce
 
 ```bash
-python3 run_waterfall.py          # φ-HBM 4 NV + 8 DRAM, 355.49 W, 0.7× freq, --active
+python3 run_waterfall.py          # φ-HBM 4 NV + 8 DRAM, 414 W full, 0.8× freq (368 W), --active
 python3 plot_waterfall.py
 python3 plot_composite.py         # reads ../NVDRAM_baseline3 + this folder
 python3 plot_layerwise.py         # reads only 5_thermal_si of both stacks

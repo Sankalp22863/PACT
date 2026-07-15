@@ -23,7 +23,7 @@ INK    = "#2b2b2b"
 MUTE   = "#8a8a8a"
 
 SHORT = ["Baseline\n(3D stacking)", "+ Base-die\nremoval", "+ Stack\nmerging",
-         "+ Top-die\nthinning", "+ 0.7x GPU\nfrequency", "+ Thermal\nsilicon"]
+         "+ Top-die\nthinning", "+ 0.8x GPU\nfrequency", "+ Thermal\nsilicon"]
 
 
 def load():
