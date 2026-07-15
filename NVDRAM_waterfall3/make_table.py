@@ -124,40 +124,56 @@ def main():
 
     # white-background PNG, black text (constrained flag stays colour-coded)
     CONSTR_COLOR = {"True": "#c0392b", "False": "#1e8f5a", "N/A": "#777777"}
-    fig, ax = plt.subplots(figsize=(11.5, 0.62 * (len(rows) + 1) + 0.3))
-    fig.patch.set_facecolor("white")
-    ax.axis("off")
     disp_header = ["Configuration", "Peak DRAM\ntemp", "Lowest DRAM\ntemp",
                    "Peak GPU\ntemp", "Thermally\nconstrained"]
-    tbl = ax.table(cellText=rows, colLabels=disp_header,
-                   colWidths=[0.27, 0.17, 0.18, 0.16, 0.22],
-                   cellLoc="right", loc="center", bbox=[0, 0, 1, 1])
+    # display copy: mark the "optimized" rows with * (STCO-only footnote below)
+    disp_rows = [[(r[0] + "*" if r[0].endswith("optimized") else r[0])] + r[1:]
+                 for r in rows]
+
+    # size each column to its own content (widest of header lines / data) + padding,
+    # so no column is wider than it needs to be
+    ncols = len(header)
+    def col_chars(c):
+        hdr = max(len(s) for s in disp_header[c].split("\n"))
+        dat = max((len(str(disp_rows[r][c])) for r in range(len(disp_rows))), default=0)
+        return max(hdr, dat) + 2
+    raw = [col_chars(c) for c in range(ncols)]
+    total = sum(raw)
+    colw = [w / total for w in raw]
+
+    fig = plt.figure(figsize=(total * 0.165, 0.46 * (len(rows) + 1) + 0.35))
+    fig.patch.set_facecolor("white")
+    ax = fig.add_axes([0, 0, 1, 1])        # axes fills the figure (no subplot margins)
+    ax.axis("off")
+    tbl = ax.table(cellText=disp_rows, colLabels=disp_header, colWidths=colw,
+                   cellLoc="center", loc="center", bbox=[0, 0.11, 1, 0.89])  # bottom 11% = footnote
     tbl.auto_set_font_size(False)
-    tbl.set_fontsize(13)
-    tbl[0, 0].set_height(tbl[0, 0].get_height() * 1.4)   # taller header for 2 lines
-    for c in range(len(header)):
-        tbl[0, c].set_height(tbl[0, c].get_height() * 1.4)
+    tbl.set_fontsize(15.5)
+    for c in range(ncols):
+        tbl[0, c].set_height(tbl[0, c].get_height() * 1.4)   # taller header for 2 lines
+    phi_row = next((i for i, r_ in enumerate(rows) if r_[0].startswith("φ-HBM")), None)
     for (r, c), cell in tbl.get_celld().items():
         cell.set_facecolor("white")
         cell.set_edgecolor("#cccccc")
         cell.set_linewidth(0.8)
         color = "black"
-        weight = "normal"
-        if r == 0:
-            weight = "bold"
-            ha = "left" if c == 0 else "center"        # centre headers so they don't collide
-        else:
-            ha = "left" if c == 0 else "right"
-            if c == 0 and rows[r - 1][0].startswith("φ-HBM"):
-                weight = "bold"                        # highlight the φ-HBM row
+        if r > 0:
             if c == len(header) - 1:                   # thermally-constrained column
                 color = CONSTR_COLOR.get(rows[r - 1][c], "black")
-                weight = "bold"
-        cell.set_text_props(color=color, fontweight=weight, ha=ha)
+            if r - 1 == phi_row:                       # highlight the φ-HBM optimized row
+                cell.set_facecolor("#fff3cd")          # soft amber band
+                cell.set_edgecolor("#e0a800")
+                cell.set_linewidth(1.6)
+        cell.set_text_props(color=color, fontweight="bold", ha="center")
         cell.PAD = 0.04
+    fig.text(0.002, 0.05,
+             "*STCO structural optimizations only (base-die removal, stack merging, "
+             "top-die thinning, thermal silicon) — no GPU frequency scaling.",
+             ha="left", va="center", fontsize=11, fontstyle="italic", color="#444444")
     for ext in ("png", "pdf"):
         out = os.path.join(HERE, f"config_table.{ext}")
-        fig.savefig(out, dpi=200, bbox_inches="tight", facecolor=fig.get_facecolor())
+        fig.savefig(out, dpi=200, bbox_inches="tight", pad_inches=0.02,
+                    facecolor=fig.get_facecolor())
         print(f"  wrote {out}")
 
 

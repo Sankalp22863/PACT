@@ -197,33 +197,48 @@ def main():
     ax.legend(handles=handles, loc="upper right", frameon=True, fontsize=9, framealpha=0.95,
               borderpad=0.6)
 
-    # ── frequency-scaling callout (in the empty lower-centre) ───────────────
-    iax = ax.inset_axes([0.225, 0.105, 0.315, 0.185])
+    # ── frequency / performance callout (in the empty lower-centre) ─────────
+    iax = ax.inset_axes([0.155, 0.115, 0.455, 0.185])
     iax.axis("off")
-    iax.text(0.5, 1.06, "GPU frequency to stay thermally viable",
+    iax.text(0.5, 1.08, "GPU frequency to stay thermally viable",
              ha="center", va="bottom", fontsize=11, fontweight="bold", color=INK,
              transform=iax.transAxes)
-    trows = [["3D all-DRAM", "0.5×", "72%"],
-             ["φ-HBM", "0.8×", "91%"]]
-    tbl = iax.table(cellText=trows, colLabels=["Config", "GPU freq", "Throughput"],
-                    colWidths=[0.40, 0.30, 0.30], cellLoc="center", loc="center",
-                    bbox=[0, 0, 1, 0.92])
+    # GPT-175B perf model. First number = reference HBM bandwidth, ( ) = with the
+    # 4x bandwidth expected from 3D stacking. 3D all-DRAM @ 0.5f: 72%(87%) /
+    # 122%(146%); φ-HBM @ 0.8f: 89%(115%) / 150%(193%). Density gains include the
+    # 3510->2080 mm^2 (1.688x) 3D package-area reduction.
+    trows = [["3D all-DRAM", "0.5×", "72% (87%)", "122% (146%)"],
+             ["φ-HBM", "0.8×", "89% (115%)", "150% (193%)"]]
+    tbl = iax.table(cellText=trows,
+                    colLabels=["Config", "GPU\nfreq", "Through-\nput", "Thr.\ndensity"],
+                    colWidths=[0.27, 0.15, 0.28, 0.30], cellLoc="center", loc="center",
+                    bbox=[0, 0.12, 1, 0.80])
     tbl.auto_set_font_size(False)
-    tbl.set_fontsize(10.5)
+    tbl.set_fontsize(9.4)
     for (r, c), cell in tbl.get_celld().items():
         cell.set_edgecolor("#cccccc")
         cell.set_linewidth(0.9)
         cell.set_facecolor("white")
         if r == 0:
             cell.set_text_props(fontweight="bold", color=INK)
+            cell.set_height(cell.get_height() * 1.35)   # room for 2-line headers
         else:
             is_phi = trows[r - 1][0].startswith("φ-HBM")
+            if is_phi:                                   # highlight the φ-HBM row
+                cell.set_facecolor("#e3f4e7")            # light green band
+                cell.set_edgecolor("#1e8f5a")
+                cell.set_linewidth(1.5)
             cell.set_text_props(color=INK,
-                                fontweight="bold" if (c == 1 or is_phi) else "normal")
+                                fontweight="bold" if (c in (1, 3) or is_phi) else "normal")
             if c == 1:                                   # emphasise the GPU-freq column
                 cell.set_text_props(fontweight="bold",
                                     color=("#1e8f5a" if is_phi else AD_EDGE))
-        cell.PAD = 0.06
+            if c == 3:                                   # emphasise throughput density
+                cell.set_text_props(fontweight="bold", color="#1f6f8b")
+        cell.PAD = 0.04
+    iax.text(0.5, 0.02, "first = ref HBM bandwidth   ·   ( ) = expected with 4× bandwidth (3D)",
+             ha="center", va="top", fontsize=8, fontstyle="italic", color="black",
+             transform=iax.transAxes)
 
     for ext in ("png", "pdf"):
         out = os.path.join(HERE, f"composite_waterfall.{ext}")
