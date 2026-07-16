@@ -7,21 +7,21 @@ Builds the slide table
 
 from the waterfall-model runs. Temperatures are read from the PACT grids:
   * Peak GPU T   = global peak of the GPU FEOL layer
-  * Peak DRAM T  = hottest DRAM die (under-stack mask); "—" for all-NVDRAM
-  * Lowest DRAM T= coolest DRAM die (top of stack, nearest lid); "—" for all-NVDRAM
+  * Peak DRAM T  = hottest DRAM die (under-stack mask); "—" for all-Fe-RAM
+  * Lowest DRAM T= coolest DRAM die (top of stack, nearest lid); "—" for all-Fe-RAM
   * Thermally constrained = True if the hottest DRAM die exceeds T_DRAM_LIMIT
     (90 °C, matching the "T > 90 °C" criterion in the freq-comparison figure);
     False if all DRAM dies are under it; N/A when the stack has no DRAM dies
-    (all-NVDRAM — NVDRAM is non-volatile / not refresh-limited).
+    (all-Fe-RAM — Fe-RAM is non-volatile / not refresh-limited).
 
 Rows (all thermally-optimized rows = STCO endpoint: base-die removal + merging
 + top-die thinning + thermal silicon; no frequency scaling unless noted):
   3D all-DRAM     ../NVDRAM_baseline_no_freq/0_baseline   (un-optimized)
   3D optimized    ../NVDRAM_baseline_no_freq/4_thermal_si (0 NV, all STCO steps)
-  2 NVDRAM layers extra_nv2
-  4 NVDRAM layers extra_nv4    (full 414 W; φ-HBM optimized is 4 NV + 0.8× freq)
-  φ-HBM optimized 5_thermal_si (4 NV + 8 DRAM, 0.8× freq = 368 W)
-  All-NVDRAM      extra_nv12
+  2 Fe-RAM layers extra_nv2
+  4 Fe-RAM layers extra_nv4    (full 414 W; xBM optimized is 4 Fe-RAM + 0.8× freq)
+  xBM optimized   5_thermal_si (4 NV + 8 DRAM, 0.8× freq = 368 W)
+  All-Fe-RAM      extra_nv12
 
 Outputs: config_table.md, config_table.csv, config_table.png (dark slide style).
 """
@@ -43,11 +43,11 @@ T_DRAM_LIMIT = 90.0        # DRAM thermal limit (°C) for the "thermally constra
 # (row label, grid dir)
 CONFIGS = [
     ("3D all-DRAM",     os.path.join(HERE, "..", "NVDRAM_baseline_no_freq", "0_baseline")),
-    ("2 NVDRAM layers", os.path.join(HERE, "extra_nv2")),
-    ("4 NVDRAM layers", os.path.join(HERE, "extra_nv4")),
+    ("2 Fe-RAM layers", os.path.join(HERE, "extra_nv2")),
+    ("4 Fe-RAM layers", os.path.join(HERE, "extra_nv4")),
     ("3D optimized",    os.path.join(HERE, "..", "NVDRAM_baseline_no_freq", "4_thermal_si")),
-    ("φ-HBM optimized", os.path.join(HERE, "5_thermal_si")),
-    ("All-NVDRAM",      os.path.join(HERE, "extra_nv12")),
+    ("xBM optimized",   os.path.join(HERE, "5_thermal_si")),
+    ("All-Fe-RAM",      os.path.join(HERE, "extra_nv12")),
 ]
 
 
@@ -151,7 +151,7 @@ def main():
     tbl.set_fontsize(15.5)
     for c in range(ncols):
         tbl[0, c].set_height(tbl[0, c].get_height() * 1.4)   # taller header for 2 lines
-    phi_row = next((i for i, r_ in enumerate(rows) if r_[0].startswith("φ-HBM")), None)
+    phi_row = next((i for i, r_ in enumerate(rows) if r_[0].startswith("xBM")), None)
     for (r, c), cell in tbl.get_celld().items():
         cell.set_facecolor("white")
         cell.set_edgecolor("#cccccc")
@@ -160,8 +160,8 @@ def main():
         if r > 0:
             if c == len(header) - 1:                   # thermally-constrained column
                 color = CONSTR_COLOR.get(rows[r - 1][c], "black")
-            if r - 1 == phi_row:                       # highlight the φ-HBM optimized row
-                cell.set_facecolor("#fff3cd")          # soft amber band
+            if r - 1 == phi_row:                       # highlight the xBM optimized row
+                cell.set_facecolor("#fff3cd")          # yellow band (matches composite callout)
                 cell.set_edgecolor("#e0a800")
                 cell.set_linewidth(1.6)
         cell.set_text_props(color=color, fontweight="bold", ha="center")

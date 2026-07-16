@@ -1,11 +1,11 @@
 """
-φ-HBM three-layer tilted heatmaps — GPU / peak NVDRAM / peak DRAM
+φ-HBM three-layer tilted heatmaps — GPU / peak Fe-RAM / peak DRAM
 =================================================================
 Three side-by-side tilted (3D-rotated) temperature planes for the φ-HBM STCO
-endpoint (5_thermal_si: 4 NVDRAM + 8 DRAM, 0.8× freq = 368 W):
+endpoint (5_thermal_si: 4 Fe-RAM + 8 DRAM, 0.8× freq = 368 W):
 
   * GPU FEOL layer          (compute-die heat source)
-  * peak NVDRAM tier        (hottest NVDRAM die — bottom, nearest GPU)
+  * peak Fe-RAM tier        (hottest Fe-RAM die — bottom, nearest GPU)
   * peak DRAM tier          (hottest DRAM die)
 
 Rendered as flat tilted colour planes (paper Icepak style) with the rainbow
@@ -75,7 +75,7 @@ def tilted_plane(ax, g, norm):
     ax.plot_surface(X, Y, np.zeros_like(g), facecolors=CMAP(norm(g)), shade=False,
                     rstride=1, cstride=1, linewidth=0, antialiased=False)
     ax.view_init(elev=48, azim=-60)
-    ax.set_box_aspect((1, GPU_Y / GPU_X, 0.04), zoom=1.15)   # fill the axes, less whitespace
+    ax.set_box_aspect((1, GPU_Y / GPU_X, 0.04), zoom=1.12)   # fill the axes, less whitespace
     ax.set_axis_off()
     ax.patch.set_alpha(0.0)          # transparent bbox so overlapping panels interlock
 
@@ -84,7 +84,7 @@ def main():
     gpu_l, nv_l, dr_l = find_layers()
     # (title, layer, accent colour matching each layer's thermal identity)
     panels = [("GPU layer",        gpu_l, "#c0392b"),
-              ("Peak NVDRAM tier", nv_l, "#e08214"),
+              ("Peak Fe-RAM tier", nv_l, "#e08214"),
               ("Peak DRAM tier",   dr_l, "#1e8f5a")]
     grids = [grid(l) for _, l, _ in panels]
     vmin = min(float(g.min()) for g in grids)
@@ -92,34 +92,35 @@ def main():
     levels = np.linspace(vmin, vmax, N_BANDS + 1)
     norm = BoundaryNorm(levels, CMAP.N)
 
-    fig = plt.figure(figsize=(14.0, 4.8))
+    fig = plt.figure(figsize=(13.0, 4.2))
     fig.patch.set_facecolor("white")
-    # single overall title, centred above the three panels
-    fig.text(0.445, 0.93, "φ-HBM", ha="center", va="center", fontsize=20,
-             fontweight="bold", color="#111111")
     # Fanned tilted planes: monotonic downward stagger matching the tilt, spaced
     # so the parallelograms leave just a teeny gap between them (no overlap).
-    AXW = 0.40                 # axes (plane) width
+    AXW, AXH = 0.40, 0.76      # axes (plane) width / height
     STEP_X = 0.25              # x advance per panel (tiny gap between planes)
     STEP_Y = -0.085            # downward stagger per panel (fan direction)
+    # base chosen so the LOWEST axes starts at y=0 — nothing extends below the
+    # figure, otherwise bbox_inches="tight" pads the bottom with whitespace
+    BASE_Y = -STEP_Y * (len(panels) - 1)
     for i, (title, _, accent) in enumerate(panels):
         g = grids[i]
         x0 = 0.0 + i * STEP_X
-        y0 = 0.02 + i * STEP_Y
-        cx = x0 + AXW / 2.0
-        # heading + peak pill track each plane's position
-        fig.text(cx, y0 + 0.86, title, ha="center", va="center", fontsize=14,
+        y0 = BASE_Y + i * STEP_Y
+        # heading + peak pill sit over the plane's RIGHT edge (the tilt leaves the
+        # upper-left empty), so they tuck into that gap instead of adding height
+        cx = x0 + AXW * 0.63
+        fig.text(cx, y0 + 0.70, title, ha="center", va="center", fontsize=14,
                  fontweight="bold", color="#1a1a1a")
-        fig.text(cx, y0 + 0.795, f"Peak {g.max():.1f} °C", ha="center", va="center",
+        fig.text(cx, y0 + 0.635, f"Peak {g.max():.1f} °C", ha="center", va="center",
                  fontsize=12, fontweight="bold", color="white",
                  bbox=dict(boxstyle="round,pad=0.32", fc=accent, ec="none"))
         # tilted heatmap plane (transparent bbox so overlaps interlock)
-        ax = fig.add_axes([x0, y0, AXW, 0.78], projection="3d")
+        ax = fig.add_axes([x0, y0, AXW, AXH], projection="3d")
         ax.set_zorder(len(panels) - i)   # left (upper) panels draw in front, like fanned cards
         tilted_plane(ax, g, norm)
 
     sm = ScalarMappable(norm=norm, cmap=CMAP)
-    cax = fig.add_axes([0.885, 0.38, 0.015, 0.52])
+    cax = fig.add_axes([0.845, 0.24, 0.016, 0.58])   # tight to the planes, near-full height
     cb = fig.colorbar(sm, cax=cax, ticks=levels[::2], boundaries=levels, spacing="proportional")
     cb.set_label("Temperature (°C)", fontsize=12, fontweight="bold")
     cb.ax.tick_params(labelsize=9.5)
@@ -132,7 +133,7 @@ def main():
 
     for ext in ("png", "pdf"):
         out = os.path.join(HERE, f"phi_heatmaps.{ext}")
-        fig.savefig(out, dpi=200, facecolor="white", bbox_inches="tight", pad_inches=0.08)
+        fig.savefig(out, dpi=200, facecolor="white", bbox_inches="tight", pad_inches=0.02)
         print(f"  wrote {out}")
 
 

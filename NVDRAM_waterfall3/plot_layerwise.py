@@ -4,8 +4,8 @@ Layerwise stack temperature profile — all-DRAM vs φ-HBM
 Peak temperature of every memory die vs its position in the stack (tier 1 =
 bottom, nearest the GPU; tier 12 = top, nearest the lid), for:
   * Pure DRAM stack (HBM only)  — blue dashed, square markers
-  * NVDRAM + DRAM hybrid stack  = this folder (φ-HBM)   — purple line; NVDRAM tiers
-    as red circles, DRAM tiers as orange squares; NVDRAM region shaded.
+  * Fe-RAM + DRAM hybrid stack  = this folder (φ-HBM)   — purple line; Fe-RAM tiers
+    as red circles, DRAM tiers as orange squares; Fe-RAM region shaded.
 Each die temperature is the peak under the stack columns (same mask as the
 waterfall). One figure per stage:
   * 0_baseline    -> layerwise_baseline.png/.pdf   — Pure-DRAM line from ../NVDRAM_baseline3
@@ -29,8 +29,8 @@ ROWS, COLS = 44, 60
 EDGE_INSERT, CENTRAL_VOID = 0.001, 0.005    # under-stack mask geometry (matches run_waterfall)
 
 # ---- color scheme (per the reference mockup) ----
-PURPLE = "#7d3c98"      # NVDRAM + DRAM hybrid stack line + its annotation
-NV_RED = "#c0392b"      # NVDRAM tier markers (circles) + NVDRAM region shading/label
+PURPLE = "#7d3c98"      # Fe-RAM + DRAM hybrid stack line + its annotation
+NV_RED = "#c0392b"      # Fe-RAM tier markers (circles) + Fe-RAM region shading/label
 DR_ORG = "#e08214"      # DRAM tier markers (squares) on the hybrid stack
 BLUE = "#2c7fb8"        # pure DRAM stack (dashed line + square markers) + its annotation
 INK, MUTE = "#2b2b2b", "#8a8a8a"
@@ -73,7 +73,7 @@ def profile(stack_dir, stage):
         for line in fh:
             idx, flp = [c.strip() for c in line.split(",")[:2]]
             if flp == "nv_tier_flp.csv":
-                mem.append((int(idx), "NVDRAM"))
+                mem.append((int(idx), "Fe-RAM"))
             elif flp == "dram_tier_flp.csv":
                 mem.append((int(idx), "DRAM"))
     mem.sort()
@@ -88,11 +88,11 @@ def make(hyb_stage, base_dir, base_stage, stage_title, out_name):
 
     fig, ax = plt.subplots(figsize=(10.5, 6.8))
 
-    # NVDRAM region shading (hybrid bottom dies)
-    n_nv = sum(1 for _, t, _ in hyb if t == "NVDRAM")
+    # Fe-RAM region shading (hybrid bottom dies)
+    n_nv = sum(1 for _, t, _ in hyb if t == "Fe-RAM")
     if n_nv:
         ax.axvspan(0.5, n_nv + 0.5, color=NV_RED, alpha=0.08, zorder=0)
-        ax.text((n_nv + 1) / 2.0, 0.035, "NVDRAM (bottom)", transform=ax.get_xaxis_transform(),
+        ax.text((n_nv + 1) / 2.0, 0.035, "Fe-RAM (bottom)", transform=ax.get_xaxis_transform(),
                 ha="center", va="bottom", fontsize=13, color=NV_RED, fontweight="bold")
 
     # pure DRAM stack — blue dashed line, square markers
@@ -100,12 +100,12 @@ def make(hyb_stage, base_dir, base_stage, stage_title, out_name):
     yd = [t for _, _, t in dram]
     ax.plot(xd, yd, "--", color=BLUE, lw=2.2, marker="s", ms=8, mec="white", mew=1.0, zorder=5)
 
-    # hybrid stack — purple line; NVDRAM tiers = red circles, DRAM tiers = orange squares
+    # hybrid stack — purple line; Fe-RAM tiers = red circles, DRAM tiers = orange squares
     xh = [p for p, _, _ in hyb]
     yh = [t for _, _, t in hyb]
     ax.plot(xh, yh, "-", color=PURPLE, lw=2.4, zorder=4)
     for p, tech, t in hyb:
-        if tech == "NVDRAM":
+        if tech == "Fe-RAM":
             ax.plot(p, t, "o", ms=9, color=NV_RED, mec="white", mew=1.2, zorder=6)
         else:
             ax.plot(p, t, "s", ms=8, color=DR_ORG, mec="white", mew=1.0, zorder=6)
@@ -138,8 +138,8 @@ def make(hyb_stage, base_dir, base_stage, stage_title, out_name):
         lbl.set_fontweight("bold")
 
     handles = [
-        Line2D([0], [0], color=PURPLE, lw=2.4, label="NVDRAM + DRAM hybrid stack"),
-        Line2D([0], [0], color=NV_RED, lw=0, marker="o", ms=9, mec="white", label="↳ NVDRAM tier (bottom)"),
+        Line2D([0], [0], color=PURPLE, lw=2.4, label="Fe-RAM + DRAM hybrid stack"),
+        Line2D([0], [0], color=NV_RED, lw=0, marker="o", ms=9, mec="white", label="↳ Fe-RAM tier (bottom)"),
         Line2D([0], [0], color=DR_ORG, lw=0, marker="s", ms=8, mec="white", label="↳ DRAM tier (continues on top)"),
         Line2D([0], [0], color=BLUE, lw=2.2, ls="--", marker="s", ms=8, mec="white",
                label="Pure DRAM stack (HBM only)"),
