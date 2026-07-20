@@ -122,13 +122,16 @@ def main():
     sm = ScalarMappable(norm=norm, cmap=CMAP)
     cax = fig.add_axes([0.845, 0.24, 0.016, 0.58])   # tight to the planes, near-full height
     cb = fig.colorbar(sm, cax=cax, ticks=levels[::2], boundaries=levels, spacing="proportional")
-    cb.set_label("Temperature (°C)", fontsize=12, fontweight="bold")
-    cb.ax.tick_params(labelsize=9.5)
+    cb.set_label("Temperature (°C)", fontsize=14, fontweight="bold")
+    cb.ax.tick_params(labelsize=12)
+    for lbl in cb.ax.get_yticklabels():
+        lbl.set_fontweight("bold")
+        lbl.set_color("#1a1a1a")
     cax.annotate(f"Max {vmax:.1f}", (0.5, 1.0), xycoords="axes fraction",
-                 xytext=(0, 6), textcoords="offset points", ha="center", fontsize=9,
+                 xytext=(0, 7), textcoords="offset points", ha="center", fontsize=11.5,
                  fontweight="bold", color="#1a1a1a")
     cax.annotate(f"Min {vmin:.1f}", (0.5, 0.0), xycoords="axes fraction",
-                 xytext=(0, -13), textcoords="offset points", ha="center", fontsize=9,
+                 xytext=(0, -15), textcoords="offset points", ha="center", fontsize=11.5,
                  fontweight="bold", color="#1a1a1a")
 
     for ext in ("png", "pdf"):
