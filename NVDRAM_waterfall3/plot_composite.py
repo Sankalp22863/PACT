@@ -1,9 +1,9 @@
 """
-Composite STCO waterfall — xBM vs all-DRAM  (paper Fig. 12 style)
+Composite STCO waterfall — XBM vs all-DRAM  (paper Fig. 12 style)
 ===================================================================
 GPU compute-die peak per STCO stage for both experiments:
   * all-DRAM (../NVDRAM_baseline3)  — dark-red box edges
-  * xBM    (this folder)          — dark-blue box edges
+  * XBM    (this folder)          — dark-blue box edges
 drawn as the imec staircase: rounded boxes coloured by temperature, curved
 "hop" arrows with a teal intervention label at each step, a thick arrow
 x-axis, and the paper's 2.5D reference (69.1 °C) with the red "3D thermal
@@ -22,7 +22,7 @@ from matplotlib.lines import Line2D
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 INK, MUTE = "#2b2b2b", "#8a8a8a"
-AD_EDGE, PH_EDGE = "#7f1d1d", "#1f4e79"    # box edges: all-DRAM / xBM
+AD_EDGE, PH_EDGE = "#7f1d1d", "#1f4e79"    # box edges: all-DRAM / XBM
 TEAL = "#2e9aa6"                           # intervention label boxes (paper style)
 PURPLE = "#5b2a86"                         # "3D thermal penalty" label
 GREEN_25D = "#b5c98e"                      # 2.5D reference box (paper style)
@@ -49,7 +49,7 @@ def load(path):
 def _text_color(fc):
     """Dark text on light box fills, white on saturated ones."""
     r, g, b = fc[:3]
-    return "white" if (0.299 * r + 0.587 * g + 0.114 * b) < 0.62 else INK
+    return "white" if (0.299 * r + 0.587 * g + 0.114 * b) < 0.58 else INK
 
 
 def series_stack(ax, x, y_anchor, title, gpu_t, dram_t, edge, dy):
@@ -72,7 +72,7 @@ HOP_COLOR = "#155e6e"                      # dark teal-blue optimization arrows
 
 
 def small_hop(ax, x0, y0, x1, y1, rad=-0.35):
-    """Small unlabeled hop arrows tracing the xBM staircase."""
+    """Small unlabeled hop arrows tracing the XBM staircase."""
     ax.add_patch(FancyArrowPatch((x0 + 0.15, y0), (x1 - 0.15, y1 + 1.2),
                                  connectionstyle=f"arc3,rad={rad}",
                                  arrowstyle="Simple,head_width=7,head_length=8,tail_width=2.4",
@@ -119,22 +119,22 @@ def main():
     ax.set_xlim(-1.75, n - 0.45)
     ax.set_ylim(52, 156)
     fig.subplots_adjust(left=0.055, right=0.995, top=0.99, bottom=0.03)
-    # convert the fixed 72-pt pair offset into data units (for arrows to the xBM boxes)
+    # convert the fixed 72-pt pair offset into data units (for arrows to the XBM boxes)
     pos = ax.get_position()
     ax_h_pts = fig.get_size_inches()[1] * 72.0 * pos.height
     pair_gap = 72.0 * (156 - 52) / ax_h_pts
 
     # ---- per stage: stacked [GPU + D1] pair per experiment, a clear vertical
-    # gap between the 3D (all-DRAM) pair and the xBM pair, ONE hop per step ----
+    # gap between the 3D (all-DRAM) pair and the XBM pair, ONE hop per step ----
     for i in range(n):
         if i:
             hop(ax, STAGE_X[i-1], ad_gpu[i-1] - 1.5, STAGE_X[i], ad_gpu[i])
             small_hop(ax, STAGE_X[i-1], ad_gpu[i-1] - pair_gap - 1.2,
                       STAGE_X[i], ad_gpu[i] - pair_gap)
         series_stack(ax, STAGE_X[i], ad_gpu[i], "3D", ad_gpu[i], ad_dram[i], AD_EDGE, dy=0)
-        series_stack(ax, STAGE_X[i], ad_gpu[i], "xBM", ph_gpu[i], ph_dram[i], PH_EDGE, dy=-72)
+        series_stack(ax, STAGE_X[i], ad_gpu[i], "XBM", ph_gpu[i], ph_dram[i], PH_EDGE, dy=-72)
 
-    # ---- thermal headroom: 3D vs xBM at the baseline stage ----
+    # ---- thermal headroom: 3D vs XBM at the baseline stage ----
     # curly brace on the LEFT of the stage-0 pair, spanning both boxes, with the
     # label arrowed in from the free space above-left
     xh = STAGE_X[0] - 0.52                 # brace arms out to the left of the ramp
@@ -152,7 +152,7 @@ def main():
         ax.annotate("3D: 0.5×", (xm + 0.30, ym + 5.5), ha="center", va="center", fontsize=10.5,
                     fontweight="bold", color=AD_EDGE, zorder=8,
                     bbox=dict(boxstyle="round,pad=0.24", fc="white", ec=AD_EDGE, lw=1.2))
-        ax.annotate("xBM: 0.8×", (xm - 0.38, ym - pair_gap - 6.5), ha="center", va="center",
+        ax.annotate("XBM: 0.8×", (xm - 0.38, ym - pair_gap - 6.5), ha="center", va="center",
                     fontsize=10.5, fontweight="bold", color=PH_EDGE, zorder=8,
                     bbox=dict(boxstyle="round,pad=0.24", fc="white", ec=PH_EDGE, lw=1.2))
 
@@ -172,7 +172,7 @@ def main():
     # ---- 2.5D reference + red "3D thermal penalty" ramp (paper Fig. 12) ----
     x25 = -1.25
     y25 = T_25D - 6.0                      # sit the reference box a tad lower
-    ax.annotate(f"2.5D\n{T_25D:.1f}°C", (x25, y25), ha="center", va="center",
+    ax.annotate(f"2.5D\nGPU {T_25D:.1f}°C", (x25, y25), ha="center", va="center",
                 fontsize=10.5, fontweight="bold", color=INK, zorder=6,
                 bbox=dict(boxstyle="round,pad=0.32", fc=GREEN_25D, ec="#8aa065", lw=1.5))
     ax.annotate(" (paper ref.)", (x25, y25), xytext=(0, -21), textcoords="offset points",
@@ -215,7 +215,7 @@ def main():
         Rectangle((0, 0), 1, 1, fc=CMAP(NORM(120)), ec=AD_EDGE, lw=1.8,
                   label="3D (all-DRAM): DRAM tier T"),
         Rectangle((0, 0), 1, 1, fc=CMAP(NORM(100)), ec=PH_EDGE, lw=1.8,
-                  label="xBM: DRAM tier T"),
+                  label="XBM: DRAM tier T"),
         Line2D([0], [0], lw=0, marker="s", ms=11, mfc=MUTE, mec="none",
                label="small box = peak GPU T"),
     ]
@@ -230,10 +230,10 @@ def main():
              transform=iax.transAxes)
     # GPT-175B perf model. First number = reference HBM bandwidth, ( ) = with the
     # 4x bandwidth expected from 3D stacking. 3D all-DRAM @ 0.5f: 72%(87%) /
-    # 122%(146%); xBM @ 0.8f: 89%(115%) / 150%(193%). Density gains include the
+    # 122%(146%); XBM @ 0.8f: 89%(115%) / 150%(193%). Density gains include the
     # 3510->2080 mm^2 (1.688x) 3D package-area reduction.
     trows = [["3D all-DRAM", "0.5×", "72% (87%)", "122% (146%)"],
-             ["xBM", "0.8×", "89% (115%)", "150% (193%)"]]
+             ["XBM", "0.8×", "89% (115%)", "150% (193%)"]]
     tbl = iax.table(cellText=trows,
                     colLabels=["Config", "GPU\nfreq", "Through-\nput", "Thr.\ndensity"],
                     colWidths=[0.27, 0.15, 0.28, 0.30], cellLoc="center", loc="center",
@@ -248,8 +248,8 @@ def main():
             cell.set_text_props(fontweight="bold", color=INK)
             cell.set_height(cell.get_height() * 1.35)   # room for 2-line headers
         else:
-            is_phi = trows[r - 1][0].startswith("xBM")
-            if is_phi:                                   # highlight the xBM row
+            is_phi = trows[r - 1][0].startswith("XBM")
+            if is_phi:                                   # highlight the XBM row
                 cell.set_facecolor("#fff3cd")            # yellow band (matches config_table)
                 cell.set_edgecolor("#e0a800")
                 cell.set_linewidth(1.5)

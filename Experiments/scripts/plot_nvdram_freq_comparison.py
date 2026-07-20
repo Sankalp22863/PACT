@@ -2,7 +2,7 @@
 4 NV + 8 DRAM — effect of GPU frequency scaling (vs pure-DRAM baseline)
 ======================================================================
 Layerwise per-die peak-temperature profile up the 3D stack, comparing the
-4 Fe-RAM + 8 DRAM composition WITH and WITHOUT GPU frequency scaling, against the
+4 FeRAM + 8 DRAM composition WITH and WITHOUT GPU frequency scaling, against the
 pure-DRAM baseline:
 
   * 0 NV + 12 DRAM (pure-DRAM baseline)  = ../../NVDRAM_baseline_no_freq/4_thermal_si
@@ -12,7 +12,7 @@ pure-DRAM baseline:
   * 4 NV + 8 DRAM  (phi-HBM, 0.8x freq)  = ../../NVDRAM_waterfall3/5_thermal_si
       STCO endpoint with 0.8x GPU frequency scaling (414 W -> 368 W, paper Fig. 8)
 
-Die-type markers: Fe-RAM (Fe-RAM) tier = circle, DRAM tier = square. Each die temperature
+Die-type markers: FeRAM (FeRAM) tier = circle, DRAM tier = square. Each die temperature
 is the peak under the stack columns (same under-stack mask as the waterfall).
 Output: ../nvdram_4NV_freq_comparison.png / .pdf
 """
@@ -37,11 +37,11 @@ INK, MUTE = "#2b2b2b", "#8a8a8a"
 
 # (label, grid-dir, colour) — bottom(hottest) -> top
 COMPS = [
-    ("0 Fe-RAM + 12 DRAM (pure-DRAM baseline)",
+    ("0 FeRAM + 12 DRAM (pure-DRAM baseline)",
      os.path.join(PACT, "NVDRAM_baseline_no_freq", "4_thermal_si"), "#1f77b4"),
-    ("4 Fe-RAM + 8 DRAM  — 414 W, no freq scaling",
+    ("4 FeRAM + 8 DRAM  — no freq scaling",
      os.path.join(EXP, "EXP_NVDRAM_4_STCO"), "#d4a017"),
-    ("4 Fe-RAM + 8 DRAM  — xBM, 0.8× freq scaling",
+    ("4 FeRAM + 8 DRAM  — XBM, 0.8× freq scaling",
      os.path.join(PACT, "NVDRAM_waterfall3", "5_thermal_si"), "#7d3c98"),
 ]
 
@@ -69,7 +69,7 @@ def profile(grid_dir):
         for line in fh:
             idx, flp = [c.strip() for c in line.split(",")[:2]]
             if flp == "nv_tier_flp.csv":
-                mem.append((int(idx), "Fe-RAM"))
+                mem.append((int(idx), "FeRAM"))
             elif flp == "dram_tier_flp.csv":
                 mem.append((int(idx), "DRAM"))
     mem.sort()
@@ -111,7 +111,7 @@ def add_layout_inset(ax):
     for cx in (LAY_GPU_X * mm * 0.20, LAY_GPU_X * mm * 0.80):
         iax.text(cx, LAY_GPU_Y * mm * 0.85, "Memory\nstack", ha="center", va="center",
                  fontsize=13, fontweight="bold", color="white", zorder=4)
-        iax.text(cx, LAY_GPU_Y * mm * 0.15, "4 Fe-RAM\n+ 8 DRAM", ha="center", va="center",
+        iax.text(cx, LAY_GPU_Y * mm * 0.15, "4 FeRAM\n+ 8 DRAM", ha="center", va="center",
                  fontsize=11, fontweight="bold", color="white", zorder=4)
     iax.set_xlim(-0.5, LAY_GPU_X * mm + 0.5)
     iax.set_ylim(-0.5, LAY_GPU_Y * mm + 0.5)
@@ -133,18 +133,32 @@ def main(with_layout=False):
         ys = [t for _, _, t in dies]
         ax.plot(xs, ys, "-", color=color, lw=2.0, zorder=4)
         for p, tech, t in dies:
-            mk = "o" if tech == "Fe-RAM" else "s"
-            ax.plot(p, t, mk, ms=8, color=color, mec="white", mew=1.0, zorder=6)
+            hollow = (tech == "FeRAM")
+            ax.plot(p, t, "o" if hollow else "X", ms=8.5,
+                    mfc="none" if hollow else color, mec=color, mew=1.8,
+                    color=color, zorder=6)
 
     # tier-1 (bottom, hottest die) peak callouts, colour-matched.
     # Per-series offsets so none collides: pure-DRAM up/left (clears the oval),
-    # 4 Fe-RAM 414 W down (clears the pure-DRAM label), xBM as-is.
+    # 4 FeRAM 414 W down (clears the pure-DRAM label), XBM as-is.
     CALLOUT_OFF = [(4, 12), (16, -12), (16, 1)]
     for i, (label, color, dies) in enumerate(data):
         t1 = dies[0][2]
         ax.annotate(f"{t1:.1f}°C", (1, t1), xytext=CALLOUT_OFF[i],
                     textcoords="offset points",
                     ha="left", va="bottom", fontsize=15, fontweight="bold", color=color, zorder=8)
+
+    # hottest DRAM die of each hybrid series (its first DRAM tier above the FeRAM
+    # block) — the peak-DRAM number quoted for these configs elsewhere; same
+    # callout style as tier 1. Skipped for pure-DRAM, whose tier 1 is already labelled.
+    # the 414 W callout is nudged right so it clears the headroom arrow at x=4.6
+    DRAM_PEAK_OFF = [(20, 8), (0, 11)]
+    for i, (_lbl, color, dies) in enumerate(data[1:]):
+        p_d, _, t_d = next((d for d in dies if d[1] == "DRAM"))
+        ax.annotate(f"{t_d:.1f}°C", (p_d, t_d), xytext=DRAM_PEAK_OFF[i],
+                    textcoords="offset points",
+                    ha="center", va="bottom", fontsize=15, fontweight="bold",
+                    color=color, zorder=8)
 
     # DRAM thermal-limit cutoffs
     n_tiers = max(len(d[2]) for d in data)
@@ -183,8 +197,8 @@ def main(with_layout=False):
 
     # legend 2 — die type (marker shapes)
     type_handles = [
-        Line2D([0], [0], color=MUTE, lw=0, marker="o", ms=9, mfc="#bbb", mec="white", label="Fe-RAM tier"),
-        Line2D([0], [0], color=MUTE, lw=0, marker="s", ms=8, mfc="#bbb", mec="white", label="DRAM tier"),
+        Line2D([0], [0], lw=0, marker="o", ms=9, mfc="none", mec=INK, mew=1.8, label="FeRAM tier"),
+        Line2D([0], [0], lw=0, marker="X", ms=9, mfc=INK, mec=INK, mew=1.8, label="DRAM tier"),
     ]
     leg2 = ax.legend(handles=type_handles, title="Die type", loc="upper right",
                      bbox_to_anchor=(1.0, 0.845), frameon=True, framealpha=0.95,
@@ -224,7 +238,7 @@ def main(with_layout=False):
                 arrowprops=dict(arrowstyle="<|-|>", color=INK, lw=2.2,
                                 mutation_scale=16), zorder=7)
     # label parked in the open space right of the curves, arrow back to the gap
-    ax.annotate("thermal\nheadroom", (hx + 0.12, (h_hi + h_lo) / 2.0),
+    ax.annotate("thermal headroom due to\nrefresh-free FeRAM", (hx + 0.12, (h_hi + h_lo) / 2.0),
                 xytext=(6.5, 96.0), ha="left", va="center",
                 fontsize=13, fontweight="bold", fontstyle="italic", color=INK, zorder=8,
                 arrowprops=dict(arrowstyle="-|>", color=INK, lw=1.6,

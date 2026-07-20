@@ -52,6 +52,42 @@ the all-DRAM baseline3 at every matched stage (final: 80.8 vs 86.6 °C GPU).
   position 0, then dies 1 (bottom, nearest GPU) → 12 (top); NVDRAM region shaded.
 - `heatmaps_thermal_si.png/.pdf`, `surfaces_thermal_si.png/.pdf` — GPU / lowest
   NVDRAM / lowest DRAM layer maps after thermal-silicon optimization.
+- `nvdram_replacement_tradeoff.png/.pdf` — peak DRAM temperature (measured) and
+  decode throughput (modelled) vs the number of FeRAM dies, N = 0…12.
+- `nvdram_reliability.png/.pdf` — see below.
+
+## Thermal reliability (`plot_reliability.py`)
+
+Three thermally-activated mechanisms evaluated on the **measured** per-die
+temperatures of `replace_sweep/nv4` (the XBM N = 4 operating point). The thermal
+model is untouched — temperatures are inputs, reliability is modelled on top.
+
+| Mechanism | Basis | Result at the hottest FeRAM die (94.7 °C) |
+|---|---|---|
+| FeRAM write endurance | `T_eff` (wear-levelled ensemble) | 6.5 × 10¹¹ cycles → **~700× margin** even at KV-rate writes |
+| **FeRAM retention** | peak T (hottest cell fails first) | **4.3 yr** vs a 10-yr life — all four FeRAM dies fall short (4.3–7.9 yr) |
+| DRAM retention | peak T | 63 ms at the 85.2 °C DRAM peak; derives the 85/90 °C limits used elsewhere |
+
+Two corrections to earlier framing came out of this:
+
+1. **Endurance does not justify pinning the KV-cache to DRAM.** It clears KV-rate
+   writes by ~700×. The binding reason is **write energy** (90 fJ/bit plus the
+   destructive-read write-back). `plot_replacement_tradeoff.py` has been updated.
+2. **FeRAM is not thermally unconstrained.** It needs no refresh, but retention is
+   finite and Arrhenius-activated; at the bottom-die temperature it is 4.3 yr.
+   Practically this means the weights must be rewritten every few years — trivially
+   satisfied by normal model reloads, but it must be stated rather than assumed away.
+
+Key parameters (all module constants, all reported in the figure footnote):
+N₀ = 10¹² cycles @ 85 °C, Ea 0.3–0.8 eV (fatigue) and 0.8–1.3 eV (retention),
+0.45 Gb/mm² × 506 mm² = 28.5 GB/die, 4.4 TB/s/stack × α_w = 0.2421.
+`F_WRITE` is new and lives **only** in this model — the power model correctly
+charges 90 fJ per access regardless of direction.
+
+```bash
+python3 plot_reliability.py --verify   # 13 self-checks
+python3 plot_reliability.py            # writes nvdram_reliability.png/.pdf
+```
 
 ## Reproduce
 

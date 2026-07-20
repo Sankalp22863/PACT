@@ -1,11 +1,11 @@
 """
-φ-HBM three-layer tilted heatmaps — GPU / peak Fe-RAM / peak DRAM
+φ-HBM three-layer tilted heatmaps — GPU / peak FeRAM / peak DRAM
 =================================================================
 Three side-by-side tilted (3D-rotated) temperature planes for the φ-HBM STCO
-endpoint (5_thermal_si: 4 Fe-RAM + 8 DRAM, 0.8× freq = 368 W):
+endpoint (5_thermal_si: 4 FeRAM + 8 DRAM, 0.8× freq = 368 W):
 
   * GPU FEOL layer          (compute-die heat source)
-  * peak Fe-RAM tier        (hottest Fe-RAM die — bottom, nearest GPU)
+  * peak FeRAM tier        (hottest FeRAM die — bottom, nearest GPU)
   * peak DRAM tier          (hottest DRAM die)
 
 Rendered as flat tilted colour planes (paper Icepak style) with the rainbow
@@ -84,7 +84,7 @@ def main():
     gpu_l, nv_l, dr_l = find_layers()
     # (title, layer, accent colour matching each layer's thermal identity)
     panels = [("GPU layer",        gpu_l, "#c0392b"),
-              ("Peak Fe-RAM tier", nv_l, "#e08214"),
+              ("Peak FeRAM tier", nv_l, "#e08214"),
               ("Peak DRAM tier",   dr_l, "#1e8f5a")]
     grids = [grid(l) for _, l, _ in panels]
     vmin = min(float(g.min()) for g in grids)
