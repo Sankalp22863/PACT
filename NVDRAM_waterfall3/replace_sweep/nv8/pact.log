@@ -1,0 +1,356 @@
+chipstack length 0.03
+chipstack width 0.022
+44 x 60 ; grid_length and width: 0.0005 0.0005
+293.15
+high-level solver = SuperLU
+layer number:0
+  UnitName  BlockTemperature
+0    BSPDN            93.378
+layer number:1
+  UnitName  BlockTemperature
+0   GPU_SI            93.378
+layer number:2
+   UnitName  BlockTemperature
+0  GPU_FEOL            94.346
+layer number:3
+   UnitName  BlockTemperature
+0  BEOL_MXY            94.336
+layer number:4
+  UnitName  BlockTemperature
+0    OXIDE            93.828
+layer number:5
+        UnitName  BlockTemperature
+0  GPU_HBM_UBUMP            93.466
+layer number:6
+  UnitName  BlockTemperature
+0   Edge_L            77.672
+1   Edge_R            77.672
+2   MEM_LB            92.340
+3   MEM_LT            92.340
+4   MEM_RB            92.340
+5   MEM_RT            92.340
+6     Void            74.185
+layer number:7
+  UnitName  BlockTemperature
+0   Edge_L            77.656
+1   Edge_R            77.656
+2   MEM_LB            92.113
+3   MEM_LT            92.113
+4   MEM_RB            92.113
+5   MEM_RT            92.113
+6     Void            74.171
+layer number:8
+  UnitName  BlockTemperature
+0   Edge_L            77.632
+1   Edge_R            77.632
+2   MEM_LB            90.197
+3   MEM_LT            90.197
+4   MEM_RB            90.197
+5   MEM_RT            90.197
+6     Void            74.150
+layer number:9
+  UnitName  BlockTemperature
+0   Edge_L            77.184
+1   Edge_R            77.184
+2   MEM_LB            90.000
+3   MEM_LT            90.000
+4   MEM_RB            90.000
+5   MEM_RT            90.000
+6     Void            73.752
+layer number:10
+  UnitName  BlockTemperature
+0   Edge_L            77.166
+1   Edge_R            77.166
+2   MEM_LB            89.771
+3   MEM_LT            89.771
+4   MEM_RB            89.771
+5   MEM_RT            89.771
+6     Void            73.736
+layer number:11
+  UnitName  BlockTemperature
+0   Edge_L            77.139
+1   Edge_R            77.139
+2   MEM_LB            87.831
+3   MEM_LT            87.831
+4   MEM_RB            87.831
+5   MEM_RT            87.831
+6     Void            73.712
+layer number:12
+  UnitName  BlockTemperature
+0   Edge_L            76.649
+1   Edge_R            76.649
+2   MEM_LB            87.632
+3   MEM_LT            87.632
+4   MEM_RB            87.632
+5   MEM_RT            87.632
+6     Void            73.277
+layer number:13
+  UnitName  BlockTemperature
+0   Edge_L            76.630
+1   Edge_R            76.630
+2   MEM_LB            87.400
+3   MEM_LT            87.400
+4   MEM_RB            87.400
+5   MEM_RT            87.400
+6     Void            73.259
+layer number:14
+  UnitName  BlockTemperature
+0   Edge_L            76.600
+1   Edge_R            76.600
+2   MEM_LB            85.435
+3   MEM_LT            85.435
+4   MEM_RB            85.435
+5   MEM_RT            85.435
+6     Void            73.233
+layer number:15
+  UnitName  BlockTemperature
+0   Edge_L            76.081
+1   Edge_R            76.081
+2   MEM_LB            85.234
+3   MEM_LT            85.234
+4   MEM_RB            85.234
+5   MEM_RT            85.234
+6     Void            72.771
+layer number:16
+  UnitName  BlockTemperature
+0   Edge_L            76.060
+1   Edge_R            76.060
+2   MEM_LB            84.999
+3   MEM_LT            84.999
+4   MEM_RB            84.999
+5   MEM_RT            84.999
+6     Void            72.752
+layer number:17
+  UnitName  BlockTemperature
+0   Edge_L            76.029
+1   Edge_R            76.029
+2   MEM_LB            83.009
+3   MEM_LT            83.009
+4   MEM_RB            83.009
+5   MEM_RT            83.009
+6     Void            72.725
+layer number:18
+  UnitName  BlockTemperature
+0   Edge_L            75.488
+1   Edge_R            75.488
+2   MEM_LB            82.805
+3   MEM_LT            82.805
+4   MEM_RB            82.805
+5   MEM_RT            82.805
+6     Void            72.243
+layer number:19
+  UnitName  BlockTemperature
+0   Edge_L            75.466
+1   Edge_R            75.466
+2   MEM_LB            82.567
+3   MEM_LT            82.567
+4   MEM_RB            82.567
+5   MEM_RT            82.567
+6     Void            72.224
+layer number:20
+  UnitName  BlockTemperature
+0   Edge_L            75.434
+1   Edge_R            75.434
+2   MEM_LB            80.552
+3   MEM_LT            80.552
+4   MEM_RB            80.552
+5   MEM_RT            80.552
+6     Void            72.195
+layer number:21
+  UnitName  BlockTemperature
+0   Edge_L            74.879
+1   Edge_R            74.879
+2   MEM_LB            80.345
+3   MEM_LT            80.345
+4   MEM_RB            80.345
+5   MEM_RT            80.345
+6     Void            71.701
+layer number:22
+  UnitName  BlockTemperature
+0   Edge_L            74.857
+1   Edge_R            74.857
+2   MEM_LB            80.104
+3   MEM_LT            80.104
+4   MEM_RB            80.104
+5   MEM_RT            80.104
+6     Void            71.681
+layer number:23
+  UnitName  BlockTemperature
+0   Edge_L            74.824
+1   Edge_R            74.824
+2   MEM_LB            78.062
+3   MEM_LT            78.062
+4   MEM_RB            78.062
+5   MEM_RT            78.062
+6     Void            71.652
+layer number:24
+  UnitName  BlockTemperature
+0   Edge_L            74.263
+1   Edge_R            74.263
+2   MEM_LB            77.853
+3   MEM_LT            77.853
+4   MEM_RB            77.853
+5   MEM_RT            77.853
+6     Void            71.152
+layer number:25
+  UnitName  BlockTemperature
+0   Edge_L            74.240
+1   Edge_R            74.240
+2   MEM_LB            77.609
+3   MEM_LT            77.609
+4   MEM_RB            77.609
+5   MEM_RT            77.609
+6     Void            71.132
+layer number:26
+  UnitName  BlockTemperature
+0   Edge_L            74.206
+1   Edge_R            74.206
+2   MEM_LB            75.541
+3   MEM_LT            75.541
+4   MEM_RB            75.541
+5   MEM_RT            75.541
+6     Void            71.102
+layer number:27
+  UnitName  BlockTemperature
+0   Edge_L            73.735
+1   Edge_R            73.735
+2   MEM_LB            75.329
+3   MEM_LT            75.329
+4   MEM_RB            75.329
+5   MEM_RT            75.329
+6     Void            70.603
+layer number:28
+  UnitName  BlockTemperature
+0   Edge_L            73.718
+1   Edge_R            73.718
+2   MEM_LB            75.081
+3   MEM_LT            75.081
+4   MEM_RB            75.081
+5   MEM_RT            75.081
+6     Void            70.583
+layer number:29
+  UnitName  BlockTemperature
+0   Edge_L            73.692
+1   Edge_R            73.692
+2   MEM_LB            72.985
+3   MEM_LT            72.985
+4   MEM_RB            72.985
+5   MEM_RT            72.985
+6     Void            70.553
+layer number:30
+  UnitName  BlockTemperature
+0   Edge_L            73.269
+1   Edge_R            73.269
+2   MEM_LB            72.771
+3   MEM_LT            72.771
+4   MEM_RB            72.771
+5   MEM_RT            72.771
+6     Void            70.060
+layer number:31
+  UnitName  BlockTemperature
+0   Edge_L            73.252
+1   Edge_R            73.252
+2   MEM_LB            72.520
+3   MEM_LT            72.520
+4   MEM_RB            72.520
+5   MEM_RT            72.520
+6     Void            70.040
+layer number:32
+  UnitName  BlockTemperature
+0   Edge_L            73.227
+1   Edge_R            73.227
+2   MEM_LB            71.175
+3   MEM_LT            71.175
+4   MEM_RB            71.175
+5   MEM_RT            71.175
+6     Void            70.011
+layer number:33
+  UnitName  BlockTemperature
+0   Edge_L            72.806
+1   Edge_R            72.806
+2   MEM_LB            71.025
+3   MEM_LT            71.025
+4   MEM_RB            71.025
+5   MEM_RT            71.025
+6     Void            69.532
+layer number:34
+  UnitName  BlockTemperature
+0   Edge_L            72.789
+1   Edge_R            72.789
+2   MEM_LB            70.850
+3   MEM_LT            70.850
+4   MEM_RB            70.850
+5   MEM_RT            70.850
+6     Void            69.513
+layer number:35
+  UnitName  BlockTemperature
+0   Edge_L            72.764
+1   Edge_R            72.764
+2   MEM_LB            69.363
+3   MEM_LT            69.363
+4   MEM_RB            69.363
+5   MEM_RT            69.363
+6     Void            69.484
+layer number:36
+  UnitName  BlockTemperature
+0   Edge_L            72.348
+1   Edge_R            72.348
+2   MEM_LB            69.187
+3   MEM_LT            69.187
+4   MEM_RB            69.187
+5   MEM_RT            69.187
+6     Void            69.089
+layer number:37
+  UnitName  BlockTemperature
+0   Edge_L            72.331
+1   Edge_R            72.331
+2   MEM_LB            68.981
+3   MEM_LT            68.981
+4   MEM_RB            68.981
+5   MEM_RT            68.981
+6     Void            69.074
+layer number:38
+  UnitName  BlockTemperature
+0   Edge_L            72.306
+1   Edge_R            72.306
+2   MEM_LB            67.236
+3   MEM_LT            67.236
+4   MEM_RB            67.236
+5   MEM_RT            67.236
+6     Void            69.053
+layer number:39
+  UnitName  BlockTemperature
+0   Edge_L            71.895
+1   Edge_R            71.895
+2   MEM_LB            67.022
+3   MEM_LT            67.022
+4   MEM_RB            67.022
+5   MEM_RT            67.022
+6     Void            68.698
+layer number:40
+  UnitName  BlockTemperature
+0   Edge_L            71.879
+1   Edge_R            71.879
+2   MEM_LB            66.771
+3   MEM_LT            66.771
+4   MEM_RB            66.771
+5   MEM_RT            66.771
+6     Void            68.684
+layer number:41
+  UnitName  BlockTemperature
+0   Edge_L            71.854
+1   Edge_R            71.854
+2   MEM_LB            64.650
+3   MEM_LT            64.650
+4   MEM_RB            64.650
+5   MEM_RT            64.650
+6     Void            68.663
+layer number:42
+  UnitName  BlockTemperature
+0      TIM            71.449
+layer number:43
+  UnitName  BlockTemperature
+0      LID            48.394
+layer number:44
+  UnitName  BlockTemperature
+0      LID             42.49

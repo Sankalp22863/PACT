@@ -3,16 +3,16 @@ Cross-experiment comparison figures for the PACT 3D-stack sweeps.
 =================================================================
 Parses each experiment (via its meta.json: grid_prefix + lcf + generated
 ptrace files) and renders the figures that only make sense *across* the
-NVDRAM/DRAM stack-composition sweep:
+Fe-RAM/DRAM stack-composition sweep:
 
   * ram_tier_temps      - peak temperature of every memory die up the stack,
                           one line per stack composition (paper's "peak temp
                           of each HBM die" figure).
   * peak_vs_nv_fraction - GPU vs memory peak temperature, and the chip power
                           that drives it, as a function of how many tiers are
-                          NVDRAM (1x2 small-multiple, one shared y per panel).
+                          Fe-RAM (1x2 small-multiple, one shared y per panel).
 
-Memory Si dies are the LCF rows whose floorplan is nv_tier_flp.csv (NVDRAM) or
+Memory Si dies are the LCF rows whose floorplan is nv_tier_flp.csv (Fe-RAM) or
 dram_tier_flp.csv (DRAM); the HBM base die is hbm_base_si_flp.csv and the GPU
 compute die is gpu_feol_flp.csv. Powers are summed from the referenced ptrace
 files, so the numbers are correct for any experiment's power model.
@@ -38,13 +38,13 @@ EXP_ROOT = os.path.abspath(os.path.join(HERE, ".."))
 sys.path.insert(0, HERE)
 import pact_plots  # noqa: E402  (shared load_grid / read_lcf helpers)
 
-MEM_FLP = {"nv_tier_flp.csv": "NVDRAM", "dram_tier_flp.csv": "DRAM"}
+MEM_FLP = {"nv_tier_flp.csv": "Fe-RAM", "dram_tier_flp.csv": "DRAM"}
 BASE_FLP = "hbm_base_si_flp.csv"
 GPU_FLP = "gpu_feol_flp.csv"
 
 # Fixed categorical order, CVD-validated (Okabe-Ito subset). Never cycled.
 SERIES_COLORS = ["#0072B2", "#009E73", "#E69F00", "#D55E00"]
-KIND_MARKER = {"NVDRAM": "o", "DRAM": "s", "Base": "D"}
+KIND_MARKER = {"Fe-RAM": "o", "DRAM": "s", "Base": "D"}
 GPU_COLOR, MEM_COLOR, TOTAL_COLOR = "#D55E00", "#0072B2", "#333333"
 
 
@@ -104,7 +104,7 @@ def tier_profile(exp_dir):
                 return None
             tiers.append((MEM_FLP[flp], float(g.max())))
             p = _ptrace_power(exp_dir, ptrace) if ptrace else 0.0
-            if MEM_FLP[flp] == "NVDRAM":
+            if MEM_FLP[flp] == "Fe-RAM":
                 nv_power += p
             else:
                 dram_power += p
@@ -112,7 +112,7 @@ def tier_profile(exp_dir):
     if not tiers:
         print(f"  (skip {exp_dir}: no memory tiers found)")
         return None
-    n_nv = sum(1 for k, _ in tiers if k == "NVDRAM")
+    n_nv = sum(1 for k, _ in tiers if k == "Fe-RAM")
     n_dram = sum(1 for k, _ in tiers if k == "DRAM")
     mem_power = nv_power + dram_power
     return {"dir": exp_dir, "name": meta.get("name", os.path.basename(exp_dir)),
@@ -174,13 +174,13 @@ def ram_tier_temps(profiles, out):
     ax.set_xlabel("Memory die position   (Base = nearest GPU  →  top tier = nearest cooling lid)")
     ax.set_ylabel("Peak die temperature (°C)")
     ax.set_title("Peak temperature of each memory die up the 3D stack\n"
-                 "NVDRAM (bottom) + DRAM (top) — varying stack composition", fontsize=12)
+                 "Fe-RAM (bottom) + DRAM (top) — varying stack composition", fontsize=12)
     ax.grid(True, ls=":", alpha=0.5)
     series_leg = ax.legend(title="Stack composition", loc="upper right", fontsize=9)
     ax.add_artist(series_leg)
     marker_handles = [
         Line2D([], [], marker="D", color="0.35", ls="none", ms=8, label="HBM base die"),
-        Line2D([], [], marker="o", color="0.35", ls="none", ms=8, label="NVDRAM tier"),
+        Line2D([], [], marker="o", color="0.35", ls="none", ms=8, label="Fe-RAM tier"),
         Line2D([], [], marker="s", color="0.35", ls="none", ms=8, label="DRAM tier"),
     ]
     ax.legend(handles=marker_handles, title="Die type", loc="lower left", fontsize=9)
@@ -189,7 +189,7 @@ def ram_tier_temps(profiles, out):
     print(f"    Written: {out}")
 
 
-# ── chart 2: GPU vs memory peak (and the power that drives it) vs NVDRAM count ─
+# ── chart 2: GPU vs memory peak (and the power that drives it) vs Fe-RAM count ─
 def peak_vs_nv_fraction(profiles, out):
     if len(profiles) < 2:
         print("    (peak_vs_nv_fraction: need >=2 experiments; skipping)")
@@ -217,7 +217,7 @@ def peak_vs_nv_fraction(profiles, out):
             axT.annotate(f"{m:.1f}°C", (xi, m), textcoords="offset points",
                          xytext=(0, -14), ha="center", fontsize=8.5, fontweight="bold", color=MEM_COLOR)
     axT.set_xticks(x); axT.set_xticklabels([f"{xi}\n({xi/total:.0%})" for xi in x])
-    axT.set_xlabel("NVDRAM tiers in the memory stack  (fraction of 12)")
+    axT.set_xlabel("Fe-RAM tiers in the memory stack  (fraction of 12)")
     axT.set_ylabel("Peak temperature (°C)")
     axT.set_title("GPU vs memory peak temperature")
     axT.grid(True, ls=":", alpha=0.5)
@@ -241,13 +241,13 @@ def peak_vs_nv_fraction(profiles, out):
             axP.annotate(f"{mp:.0f} W", (xi, mp), textcoords="offset points",
                          xytext=(0, -14), ha="center", fontsize=8.5, fontweight="bold", color=MEM_COLOR)
     axP.set_xticks(x); axP.set_xticklabels([f"{xi}\n({xi/total:.0%})" for xi in x])
-    axP.set_xlabel("NVDRAM tiers in the memory stack  (fraction of 12)")
+    axP.set_xlabel("Fe-RAM tiers in the memory stack  (fraction of 12)")
     axP.set_ylabel("Power (W)")
-    axP.set_title("Chip power vs NVDRAM fraction")
+    axP.set_title("Chip power vs Fe-RAM fraction")
     axP.grid(True, ls=":", alpha=0.5)
     axP.legend(fontsize=9, loc="center right")
 
-    fig.suptitle("More NVDRAM → less memory standby power → cooler GPU and memory\n"
+    fig.suptitle("More Fe-RAM → less memory standby power → cooler GPU and memory\n"
                  "(top-only cooling: all heat exits up through the lid)", fontsize=12)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     fig.savefig(out, dpi=150, bbox_inches="tight"); plt.close(fig)

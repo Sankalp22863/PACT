@@ -47,7 +47,7 @@ FLP_NAMES = {
     "gpu_beol_flp.csv":      "GPU BEOL",
     "ubump_flp.csv":         "GPU-HBM uBump",
     "dram_tier_flp.csv":     "DRAM die",
-    "nv_tier_flp.csv":       "NVDRAM die",
+    "nv_tier_flp.csv":       "Fe-RAM die",
     "daf_flp.csv":           "DAF bond",
     # detailed sublayers (EXP_DRAM_R + EXP_NVDRAM_S)
     "bspdn_flp.csv":         "BSPDN",
@@ -59,7 +59,7 @@ FLP_NAMES = {
     "hybrid_bond_flp.csv":   "Hybrid bonding",
     "dram_beol_flp.csv":     "DRAM die BEOL",
     "dram_die_beol_flp.csv": "DRAM die BEOL",
-    "nv_die_beol_flp.csv":   "NVDRAM die BEOL",
+    "nv_die_beol_flp.csv":   "Fe-RAM die BEOL",
     "tim_flp.csv":           "TIM",
     "lid_flp.csv":           "Lid",
 }
@@ -68,7 +68,7 @@ FLP_NAMES = {
 SURROUND = {"THERMAL_SI", "FILLER", "MOLD", "SILICON_CARRIER", "PKG_MOLD", "MERGE_SI"}
 MAT_NAME = {
     "GPU_Si": "GPU substrate (Si)", "GPU_FEOL": "GPU FEOL", "GPU_BEOL": "GPU BEOL",
-    "UBUMP": "GPU-mem uBump", "NV_FEOL": "NVDRAM die", "DRAM_Si": "DRAM die",
+    "UBUMP": "GPU-mem uBump", "NV_FEOL": "Fe-RAM die", "DRAM_Si": "DRAM die",
     "THERMAL_SI": "Thermal silicon", "DAF": "Die-attach film", "FILLER": "Filler",
     "MOLD": "Mold / underfill", "SILICON_CARRIER": "Silicon carrier",
     # detailed EXP_DRAM_R materials
@@ -76,7 +76,7 @@ MAT_NAME = {
     "GPU_HBM_UBUMP": "GPU-HBM uBump", "HBM_BASE_SI": "HBM base die",
     "HBM_BASE_BEOL": "HBM base BEOL", "HYBRID_BOND": "Hybrid bonding",
     "DRAM_BEOL": "DRAM die BEOL", "DRAM_SI": "DRAM die", "TIM": "TIM", "LID": "Lid",
-    "NV_DIE_SI": "NVDRAM die", "NV_DIE_BEOL": "NVDRAM die BEOL",
+    "NV_DIE_SI": "Fe-RAM die", "NV_DIE_BEOL": "Fe-RAM die BEOL",
     "PKG_MOLD": "Package mold ring",
 }
 MAT_COLOR = {
@@ -351,7 +351,7 @@ def _flat_plane(ax, g, geom, title, peak_color="#b30000",
 
 def side_by_side(prefix, out, geom, lcf=None,
                  left=(1, "GPU substrate (compute die)"),
-                 right=(9, "Lowest NVDRAM tier"),
+                 right=(9, "Lowest Fe-RAM tier"),
                  mask_surround=False):
     """Paper-style two-panel figure: two layers shown as tilted flat color planes,
     each with its own jet colour scale and a peak-temperature callout."""
@@ -368,7 +368,7 @@ def side_by_side(prefix, out, geom, lcf=None,
         m = _flat_plane(ax, g, geom, f"L{lid}: {label}",
                         mask_surround=mask_surround)
         fig.colorbar(m, ax=ax, label="Temperature (°C)", fraction=0.03, pad=0.10, shrink=0.6)
-    fig.suptitle("3D-stacked GPU + NVDRAM — steady-state temperature\n"
+    fig.suptitle("3D-stacked GPU + Fe-RAM — steady-state temperature\n"
                  "(independent colour scales, as in the IEDM figure)", fontsize=13)
     fig.savefig(out); plt.close(fig)
     print(f"    Written: {out}")
@@ -468,7 +468,7 @@ def future_integration(lcf, flp_dir, out):
         ("uBump / hybrid-bond interface", "#dadaeb"),
     ]
     if nv:
-        blocks.append((f"NVDRAM stack — {nv} tiers (non-volatile, bottom)", "#74c476"))
+        blocks.append((f"Fe-RAM stack — {nv} tiers (non-volatile, bottom)", "#74c476"))
     blocks.append((f"DRAM stack — {dram} tiers (HBM, top)", "#6baed6"))
     blocks.append(("Liquid cold-plate lid (cooling)", "#bdd7e7"))
     fig, ax = plt.subplots(figsize=(6.5, 7.5))
@@ -484,7 +484,7 @@ def future_integration(lcf, flp_dir, out):
     ax.text(0.5, -0.04, "heat flows UP to the lid →", ha="center", fontsize=9,
             style="italic", color="#b30000")
     ax.set_xlim(0, 1); ax.set_ylim(-0.07, y + 0.02); ax.axis("off")
-    title = ("Future 3D integration: NVDRAM (bottom) + DRAM (top) on GPU" if nv
+    title = ("Future 3D integration: Fe-RAM (bottom) + DRAM (top) on GPU" if nv
              else "3D integration: DRAM (HBM) on GPU")
     ax.set_title(title, fontsize=12)
     fig.savefig(out); plt.close(fig)
@@ -493,7 +493,7 @@ def future_integration(lcf, flp_dir, out):
 
 def layer_profile(prefix, lcf, out, geom, mask_surround=False):
     """Layerwise temperature through the whole stack (bottom -> lid): per-layer
-    peak / mean / min with the min-max band, DRAM/NVDRAM die layers marked."""
+    peak / mean / min with the min-max band, DRAM/Fe-RAM die layers marked."""
     ids = discover_layers(prefix)
     if not ids:
         raise SystemExit(f"No '{prefix}.layer*' files. Run PACT first.")
@@ -507,7 +507,7 @@ def layer_profile(prefix, lcf, out, geom, mask_surround=False):
                 feol_layer = lid
             if flp in ("dram_tier_flp.csv", "nv_tier_flp.csv"):
                 n += 1
-                die_layers[lid] = ("NVDRAM" if "nv_" in flp else "DRAM", n)
+                die_layers[lid] = ("Fe-RAM" if "nv_" in flp else "DRAM", n)
     xs, pk, mn, av = [], [], [], []
     for lid in ids:
         g = load_grid(prefix, lid)
@@ -519,11 +519,11 @@ def layer_profile(prefix, lcf, out, geom, mask_surround=False):
     ax.fill_between(xs, mn, pk, color="#9ecae1", alpha=0.35, label="min–max across layer")
     ax.plot(xs, pk, "-", color="#b30000", lw=2.0, label="layer peak")
     ax.plot(xs, av, "--", color="#555555", lw=1.3, label="layer mean")
-    nv_x = [x for x in xs if die_layers.get(x, ("",))[0] == "NVDRAM"]
+    nv_x = [x for x in xs if die_layers.get(x, ("",))[0] == "Fe-RAM"]
     dr_x = [x for x in xs if die_layers.get(x, ("",))[0] == "DRAM"]
     if nv_x:
         ax.plot(nv_x, [pk[xs.index(x)] for x in nv_x], "o", ms=6, color="#d62728",
-                zorder=3, label="NVDRAM die")
+                zorder=3, label="Fe-RAM die")
     if dr_x:
         ax.plot(dr_x, [pk[xs.index(x)] for x in dr_x], "s", ms=5, color="#e6862e",
                 zorder=3, label="DRAM die")
@@ -568,9 +568,9 @@ def _stack_profile(exp_dir, prefix, lcf, flp_regions,
 def peak_per_tier(hybrid_dir, hybrid_prefix, hybrid_lcf,
                   dram_dir, dram_prefix, dram_lcf, out,
                   geom=(0.030, 0.022, 0.011, 0.006), mask_surround=False):
-    """Peak temperature up the stack: NVDRAM+DRAM hybrid (continuous) vs pure DRAM."""
+    """Peak temperature up the stack: Fe-RAM+DRAM hybrid (continuous) vs pure DRAM."""
     hybrid = _stack_profile(hybrid_dir, hybrid_prefix, hybrid_lcf,
-                            {"nv_tier_flp.csv": "NVDRAM", "dram_tier_flp.csv": "DRAM"},
+                            {"nv_tier_flp.csv": "Fe-RAM", "dram_tier_flp.csv": "DRAM"},
                             geom, mask_surround)
     pure = _stack_profile(dram_dir, dram_prefix, dram_lcf, {"dram_tier_flp.csv": "DRAM"},
                           geom, mask_surround)
@@ -578,19 +578,19 @@ def peak_per_tier(hybrid_dir, hybrid_prefix, hybrid_lcf,
         raise SystemExit("peak_per_tier: missing tier data (run both experiments first).")
     regions = [r for r, _ in hybrid]
     yh = np.array([v for _, v in hybrid]); xh = np.arange(1, len(yh) + 1)
-    n_nv = sum(1 for r in regions if r == "NVDRAM")
+    n_nv = sum(1 for r in regions if r == "Fe-RAM")
     yp = np.array([v for _, v in pure]); xp = np.arange(1, len(yp) + 1)
     fig, ax = plt.subplots(figsize=(8.5, 5.2))
-    ax.plot(xh, yh, "-", color="#7b3294", lw=2.2, zorder=2, label="NVDRAM + DRAM hybrid stack")
-    nv_i = [i for i, r in enumerate(regions) if r == "NVDRAM"]
+    ax.plot(xh, yh, "-", color="#7b3294", lw=2.2, zorder=2, label="Fe-RAM + DRAM hybrid stack")
+    nv_i = [i for i, r in enumerate(regions) if r == "Fe-RAM"]
     dr_i = [i for i, r in enumerate(regions) if r == "DRAM"]
-    ax.plot(xh[nv_i], yh[nv_i], "o", color="#d62728", ms=8, zorder=3, label="   ↳ NVDRAM tier (bottom)")
+    ax.plot(xh[nv_i], yh[nv_i], "o", color="#d62728", ms=8, zorder=3, label="   ↳ Fe-RAM tier (bottom)")
     ax.plot(xh[dr_i], yh[dr_i], "s", color="#e6862e", ms=7, zorder=3, label="   ↳ DRAM tier (continues on top)")
     if n_nv:
         ax.axvspan(0.5, n_nv + 0.5, color="#d62728", alpha=0.06, zorder=0)
         ax.axvline(n_nv + 0.5, color="#888888", ls=":", lw=1.2, zorder=1)
         ylo, yhi = ax.get_ylim()
-        ax.text(n_nv / 2.0 + 0.5, ylo + 0.04 * (yhi - ylo), "NVDRAM (bottom)",
+        ax.text(n_nv / 2.0 + 0.5, ylo + 0.04 * (yhi - ylo), "Fe-RAM (bottom)",
                 ha="center", va="bottom", fontsize=8, color="#d62728")
     ax.plot(xp, yp, "s--", color="#1f77b4", lw=2, ms=6, zorder=2, label="Pure DRAM stack (HBM only)")
     ax.annotate(f"{yh[0]:.1f} °C", (xh[0], yh[0]), textcoords="offset points",
@@ -600,7 +600,7 @@ def peak_per_tier(hybrid_dir, hybrid_prefix, hybrid_lcf,
     ax.set_xlabel("Memory tier index (1 = bottom, nearest GPU → top = lid)")
     ax.set_ylabel("Peak die temperature (°C)")
     ax.set_title("Peak temperature up the memory stack\n"
-                 "NVDRAM+DRAM hybrid vs pure DRAM", fontsize=12)
+                 "Fe-RAM+DRAM hybrid vs pure DRAM", fontsize=12)
     ax.set_xticks(np.arange(1, max(len(yh), len(yp)) + 1))
     ax.grid(True, ls=":", alpha=0.5); ax.legend(fontsize=9)
     fig.savefig(out); plt.close(fig)
@@ -633,7 +633,7 @@ def make_plots(exp_dir, meta, out_dir):
         elif plot == "side_by_side":
             sb = meta.get("side_by_side", {})
             left = tuple(sb.get("left", [1, "GPU substrate (compute die)"]))
-            right = tuple(sb.get("right", [9, "Lowest NVDRAM tier"]))
+            right = tuple(sb.get("right", [9, "Lowest Fe-RAM tier"]))
             side_by_side(prefix, os.path.join(out_dir, "gpu_vs_nvdram_side_by_side.png"),
                          geom, lcf, left=left, right=right,
                          mask_surround=mask)

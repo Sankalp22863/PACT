@@ -1,0 +1,20 @@
+{
+  "name": "EXP_INV_NVDRAM_100",
+  "title": "INVERTED (GPU-on-top) hybrid 4 NVDRAM + 8 DRAM \u2014 100% GPU (414 W)",
+  "generate": "python3 generate.py --invert --nv-access-fj 90 --bw-util 0 --gpu-power 414",
+  "lcf": "hybrid_lcf.csv",
+  "config": "experiment.config",
+  "modelparams": "modelParams.config",
+  "grid_prefix": "hybrid.grid.steady",
+  "gpu_len": 0.03,
+  "gpu_wid": 0.022,
+  "mem_side": 0.011,
+  "pkg_margin": 0.006,
+  "plots": [
+    "heatmaps",
+    "surface",
+    "layer_profile",
+    "cross_section",
+    "table"
+  ]
+}

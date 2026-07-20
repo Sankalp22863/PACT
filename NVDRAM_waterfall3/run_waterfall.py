@@ -31,9 +31,9 @@ GEN  = os.path.join(HERE, "waterfall_generate.py")
 GPU_X, GPU_Y = 0.030, 0.022
 ROWS, COLS = 44, 60
 EDGE_INSERT, CENTRAL_VOID = 0.001, 0.005      # paper-layout: edge inserts + merge void (matches VOID_UM)
-GPU_POWER_FULL = 355.4925              # power density 5.38625e-7 W/um^2 x (30000 x 22000 um) = 355.49 W
-FREQ_POWER = GPU_POWER_FULL * 346.0 / 414.0   # 0.7x frequency: paper Fig.8 gives 346 W at 0.7x (414 W full);
-                                              # scaled to this GPU's full power -> 297 W (non-linear: L2/interconnect fixed)
+GPU_POWER_FULL = 414.0                 # full-power stages (matches the paper and NVDRAM_baseline3)
+FREQ_POWER = 368.0                     # 0.8x GPU frequency: paper Fig.8 gives 368 W at 0.8x (414 W full;
+                                       # non-linear P~f: L2/interconnect power stays fixed)
 SUBSTRATE_UM = 1500                    # GPU-Si substrate (calibration knob, same as NVDRAM_baseline2)
 VOID_UM = 5000                         # effective mold-void width merge converts (same calibration)
 GRID_PREFIX = "hybrid.grid.steady"
@@ -43,7 +43,7 @@ STAGES = [
     ("1_base_removal", "+ HBM base-die removal",         ["--no-base-die"]),
     ("2_merge",        "+ HBM stack merging",            ["--no-base-die", "--merge-stacks"]),
     ("3_thin_top",     "+ Top-die thinning",             ["--no-base-die", "--merge-stacks", "--thin-top-die"]),
-    ("4_freq_0p7",     "+ 0.7x GPU frequency",           ["--no-base-die", "--merge-stacks", "--thin-top-die",
+    ("4_freq_0p8",     "+ 0.8x GPU frequency",           ["--no-base-die", "--merge-stacks", "--thin-top-die",
                                                           f"--gpu-power {FREQ_POWER:g}"]),
     ("5_thermal_si",   "+ Thermal-silicon optimization", ["--no-base-die", "--merge-stacks", "--thin-top-die",
                                                           f"--gpu-power {FREQ_POWER:g}", "--optimized"]),

@@ -1,0 +1,20 @@
+{
+  "name": "EXP_INV_DRAM_80",
+  "title": "INVERTED (GPU-on-top) pure-HBM 12 DRAM \u2014 80% GPU / 0.8x freq (368 W)",
+  "generate": "python3 generate.py --invert --gpu-power 368",
+  "lcf": "dram3d_3d_lcf.csv",
+  "config": "experiment.config",
+  "modelparams": "modelParams.config",
+  "grid_prefix": "dram3d_3d.grid.steady",
+  "gpu_len": 0.03,
+  "gpu_wid": 0.022,
+  "mem_side": 0.011,
+  "pkg_margin": 0.006,
+  "plots": [
+    "heatmaps",
+    "surface",
+    "layer_profile",
+    "cross_section",
+    "table"
+  ]
+}

@@ -1,0 +1,1 @@
+[waterfall_generate rect] die 30x22 mm | 44 layers | filler=THERMAL_SI | gpu=414 W | 12 NVDRAM + 0 DRAM | DRAM 3.383 W/die, NV 1.147 W/die | active: +49.7 mW/DRAM-die, +63.9 mW/NV-die (a_w=0.2421, 4.4 TB/s/stack, 70/90 fJ/bit) | interventions=['base-die-removal', 'stack-merging', 'top-die-thinning', 'thermal-silicon']

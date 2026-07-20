@@ -23,7 +23,7 @@ INK    = "#2b2b2b"
 MUTE   = "#8a8a8a"
 
 SHORT = ["Baseline\n(3D stacking)", "+ Base-die\nremoval", "+ Stack\nmerging",
-         "+ Top-die\nthinning", "+ 0.7x GPU\nfrequency", "+ Thermal\nsilicon"]
+         "+ Top-die\nthinning", "+ 0.8x GPU\nfrequency", "+ Thermal\nsilicon"]
 
 
 def load():
@@ -67,7 +67,7 @@ def main():
 
     ax.text(0.015, 0.05,
             f"GPU {gpu[0]:.1f}→{gpu[-1]:.1f} °C   |   lowest-DRAM {dram[0]:.1f}→{dram[-1]:.1f} °C   |   "
-            f"φ-HBM (4 NVDRAM + 8 DRAM), 30×22 mm",
+            f"φ-HBM (4 Fe-RAM + 8 DRAM), 30×22 mm",
             transform=ax.transAxes, fontsize=10.5, color=INK, fontweight="bold",
             bbox=dict(boxstyle="round,pad=0.4", fc="#f7f5fb", ec=MUTE, lw=1.0))
 
